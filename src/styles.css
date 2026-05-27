@@ -4,6 +4,14 @@
 
 @custom-variant dark (&:is(.dark *));
 
+@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap');
+
+html[dir="rtl"] body { font-family: 'Cairo', system-ui, sans-serif; }
+html[dir="ltr"] body { font-family: 'Inter', system-ui, sans-serif; }
+
+/* Numeric tabular alignment for tables */
+.tabular-nums { font-variant-numeric: tabular-nums; }
+
 /*
  * Design system definition.
  *
