@@ -14,7 +14,7 @@ export function useCurrentUser() {
         .select("*")
         .eq("id", data.user.id)
         .maybeSingle();
-      return { ...data.user, profile };
+      return { id: data.user.id, email: data.user.email, profile };
     },
   });
 }
@@ -34,17 +34,17 @@ export function usePermissions() {
     enabled: !!userId,
     queryFn: async () => {
       if (!userId) return [];
-      const [direct, groups] = await Promise.all([
-        supabase.from("user_permissions").select("permission_key").eq("user_id", userId),
-        supabase
-          .from("user_permission_groups")
-          .select("group_id, permission_group_items:group_id(permission_key)")
-          .eq("user_id", userId),
-      ]);
       const set = new Set<string>();
-      direct.data?.forEach((r: any) => set.add(r.permission_key));
-      // fetch group perms separately
-      const groupIds = (groups.data ?? []).map((g: any) => g.group_id);
+      const { data: direct } = await supabase
+        .from("user_permissions")
+        .select("permission_key")
+        .eq("user_id", userId);
+      direct?.forEach((r: any) => set.add(r.permission_key));
+      const { data: ug } = await supabase
+        .from("user_permission_groups")
+        .select("group_id")
+        .eq("user_id", userId);
+      const groupIds = (ug ?? []).map((g: any) => g.group_id);
       if (groupIds.length) {
         const { data: gp } = await supabase
           .from("permission_group_items")
