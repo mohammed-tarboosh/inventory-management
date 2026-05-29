@@ -27,7 +27,7 @@ import { useI18n } from "@/lib/i18n";
 import { usePermissions } from "@/lib/permissions";
 
 export function AppSidebar() {
-  const { t } = useI18n();
+  const { t, dir } = useI18n();
   const { can } = usePermissions();
   const path = useRouterState({ select: (r) => r.location.pathname });
 
@@ -47,7 +47,7 @@ export function AppSidebar() {
   ];
 
   return (
-    <Sidebar collapsible="icon">
+    <Sidebar side={dir === "rtl" ? "right" : "left"} collapsible="icon">
       <SidebarContent>
         <SidebarGroup>
           <SidebarGroupLabel>{t("app_name")}</SidebarGroupLabel>

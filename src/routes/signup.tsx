@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { useI18n } from "@/lib/i18n";
+import { resolveAuthEmail } from "@/lib/auth";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/signup")({
@@ -23,14 +24,26 @@ function SignupPage() {
   const submit = async (e: FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    const email = `${username.trim().toLowerCase()}@inv.local`;
-    const { error } = await supabase.auth.signUp({
+    const { email, error: usernameError } = resolveAuthEmail(username);
+
+    if (usernameError) {
+      setLoading(false);
+      toast.error(usernameError);
+      return;
+    }
+
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: { data: { username: username.trim(), full_name: fullName || username.trim() } },
     });
     setLoading(false);
     if (error) { toast.error(error.message); return; }
+    if (!data.session) {
+      toast.error(t("signup_requires_email_confirm"));
+      nav({ to: "/login" });
+      return;
+    }
     toast.success(t("save_success"));
     nav({ to: "/dashboard" });
   };
