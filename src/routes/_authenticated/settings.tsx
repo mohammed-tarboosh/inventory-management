@@ -51,7 +51,7 @@ function CurrenciesTab() {
         { key: "c", header: t("code"), cell: (r: any) => r.code },
         { key: "ar", header: t("name_ar"), cell: (r: any) => r.name_ar },
         { key: "en", header: t("name_en"), cell: (r: any) => r.name_en },
-        { key: "s", header: t("symbol") as any, cell: (r: any) => r.symbol },
+        { key: "s", header: "Symbol", cell: (r: any) => r.symbol },
         { key: "b", header: t("base_currency"), cell: (r: any) => r.is_base ? "✓" : "" },
         { key: "a", header: t("actions"), cell: (r: any) => can("settings.manage") && !r.is_base && (
           <ConfirmDelete onConfirm={async () => {
