@@ -5,6 +5,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { DataTable } from "@/components/DataTable";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -164,7 +165,7 @@ function TxForm({ customers, currencies, defaultCustomer, onDone }: { customers:
               </SelectContent>
             </Select>
           </div>
-          <div><Label>{t("date")}</Label><Input type="date" value={transaction_date} onChange={(e) => setDate(e.target.value)} /></div>
+          <div><Label>{t("date")}</Label><DatePicker value={transaction_date} onValueChange={setDate} /></div>
           <div><Label>{t("amount")}</Label><Input type="number" step="0.01" value={amount} onChange={(e) => setAmount(Number(e.target.value))} /></div>
           <div>
             <Label>{t("currency")}</Label>

@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { PageHeader } from "@/components/PageHeader";
 import { DataTable } from "@/components/DataTable";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -65,8 +66,8 @@ function Page() {
         <Button variant="outline" onClick={exportPdf}><FileText className="h-4 w-4 me-1" />{t("export_pdf")}</Button>
       </PageHeader>
       <div className="grid grid-cols-1 gap-3 mb-4 p-4 bg-card border rounded-md sm:grid-cols-2 lg:grid-cols-4">
-        <div><Label>{t("from_date")}</Label><Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} /></div>
-        <div><Label>{t("to_date")}</Label><Input type="date" value={to} onChange={(e) => setTo(e.target.value)} /></div>
+        <div><Label>{t("from_date")}</Label><DatePicker value={from} onValueChange={setFrom} /></div>
+        <div><Label>{t("to_date")}</Label><DatePicker value={to} onValueChange={setTo} /></div>
         <div>
           <Label>{t("item")}</Label>
           <Select value={itemId} onValueChange={setItemId}>

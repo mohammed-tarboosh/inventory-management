@@ -5,6 +5,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { DataTable } from "@/components/DataTable";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Label } from "@/components/ui/label";
 import { useI18n } from "@/lib/i18n";
 import { fmtDate, fmtNum } from "@/lib/format";
@@ -64,8 +65,8 @@ function Page() {
     <div>
       <PageHeader title={t("reports")} />
       <div className="grid grid-cols-1 gap-3 mb-4 p-4 bg-card border rounded-md sm:grid-cols-2 lg:grid-cols-4">
-        <div><Label>{t("from_date")}</Label><Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} /></div>
-        <div><Label>{t("to_date")}</Label><Input type="date" value={to} onChange={(e) => setTo(e.target.value)} /></div>
+        <div><Label>{t("from_date")}</Label><DatePicker value={from} onValueChange={setFrom} /></div>
+        <div><Label>{t("to_date")}</Label><DatePicker value={to} onValueChange={setTo} /></div>
       </div>
 
       <h2 className="text-xl font-semibold mb-2 mt-6">{t("inventory_report")}</h2>

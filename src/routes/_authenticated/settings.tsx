@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { DatePicker } from "@/components/ui/date-picker";
 import { ConfirmDelete } from "@/components/ConfirmDelete";
 import { useI18n } from "@/lib/i18n";
 import { usePermissions } from "@/lib/permissions";
@@ -143,7 +144,7 @@ function RateForm({ currencies, onDone }: { currencies: any[]; onDone: () => voi
             </Select>
           </div>
           <div><Label>{t("exchange_rate")}</Label><Input type="number" step="0.0001" value={rate_to_base} onChange={(e) => setRate(Number(e.target.value))} /></div>
-          <div><Label>{t("rate_date")}</Label><Input type="date" value={rate_date} onChange={(e) => setDate(e.target.value)} /></div>
+          <div><Label>{t("rate_date")}</Label><DatePicker value={rate_date} onValueChange={setDate} /></div>
         </div>
         <DialogFooter><Button variant="outline" onClick={() => setOpen(false)}>{t("cancel")}</Button><Button onClick={submit}>{t("save")}</Button></DialogFooter>
       </DialogContent>

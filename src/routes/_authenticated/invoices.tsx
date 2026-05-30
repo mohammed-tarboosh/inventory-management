@@ -5,6 +5,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { DataTable } from "@/components/DataTable";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -147,7 +148,7 @@ function InvoiceForm({ suppliers, items, currencies, onDone }: { suppliers: any[
         <DialogHeader><DialogTitle>{t("new_invoice")}</DialogTitle></DialogHeader>
         <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
           <div><Label>{t("invoice_no")}</Label><Input value={invoice_no} onChange={(e) => setNo(e.target.value)} /></div>
-          <div><Label>{t("invoice_date")}</Label><Input type="date" value={invoice_date} onChange={(e) => setDate(e.target.value)} /></div>
+          <div><Label>{t("invoice_date")}</Label><DatePicker value={invoice_date} onValueChange={setDate} /></div>
           <div>
             <Label>{t("supplier")}</Label>
             <Select value={supplier_id ?? "_"} onValueChange={(v) => setSupplier(v === "_" ? null : v)}>
