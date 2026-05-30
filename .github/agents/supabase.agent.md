@@ -1,6 +1,6 @@
 ---
 description: "Use when requests involve Supabase auth, database schema, migrations, RLS policies, SQL inspection, project status, keys, or logs. Keywords: supabase, migration, rls, policy, auth, project id, database. Must use supabase MCP server."
-tools: [read, edit, search, supabase/*]
+tools: [vscode, execute, read, agent, edit, search, web, 'mcp_docker/*', 'github/*', 'supabase-local/*', browser, cweijan.vscode-postgresql-client2/dbclient-getDatabases, cweijan.vscode-postgresql-client2/dbclient-getTables, cweijan.vscode-postgresql-client2/dbclient-executeQuery, todo]
 user-invocable: true
 disable-model-invocation: false
 ---

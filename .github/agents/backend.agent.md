@@ -1,6 +1,6 @@
 ---
 description: "Use when requests involve server-side logic, middleware, server functions, API handlers, auth flow on server, or runtime behavior in src/server.ts and src/start.ts. Keywords: backend, server, middleware, handler, createServerFn, API logic."
-tools: [read, edit, search, execute]
+tools: [vscode, execute, read, agent, edit, search, web, browser, cweijan.vscode-postgresql-client2/dbclient-getDatabases, cweijan.vscode-postgresql-client2/dbclient-getTables, cweijan.vscode-postgresql-client2/dbclient-executeQuery, todo]
 user-invocable: true
 disable-model-invocation: false
 ---

@@ -1,6 +1,6 @@
 ---
 description: "Use when the user asks for a plan, roadmap, task breakdown, milestones, estimation, or execution strategy for inventory-management. Keywords: plan, split tasks, roadmap, phases, priorities, checklist, validation."
-tools: [read, search, todo, agent]
+tools: [read, agent, search, web, 'supabase-local/*', browser, cweijan.vscode-postgresql-client2/dbclient-getDatabases, cweijan.vscode-postgresql-client2/dbclient-getTables, cweijan.vscode-postgresql-client2/dbclient-executeQuery, todo]
 user-invocable: true
 disable-model-invocation: false
 ---

@@ -1,6 +1,6 @@
 ---
 description: "Use when requests involve UI, React, TanStack Router/Start, pages, components, CSS, responsive layout, RTL/LTR, sidebar/header behavior, or UX polish. Keywords: frontend, UI bug, styling, route page, component, RTL."
-tools: [read, edit, search, execute]
+tools: [execute, read, agent, edit, search, web, browser]
 user-invocable: true
 disable-model-invocation: false
 ---

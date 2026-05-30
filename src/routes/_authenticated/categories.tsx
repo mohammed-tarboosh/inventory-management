@@ -26,17 +26,43 @@ function Page() {
     queryFn: async () => (await supabase.from("categories").select("*").order("name_ar")).data ?? [],
   });
 
+  // Build a flattened tree for display with depth for indentation
+  // Work on shallow copies to avoid mutating original rows (prevents duplicate children accumulation)
+  const buildTree = (items: any[]) => {
+    const copies = (items || []).map((it) => ({ ...it }));
+    const map = copies.reduce((acc: Record<string, any>, it: any) => ((acc[it.id] = it), acc), {} as Record<string, any>);
+    const roots: any[] = [];
+    copies.forEach((it) => {
+      if (it.parent_id && map[it.parent_id]) {
+        map[it.parent_id].children = map[it.parent_id].children || [];
+        map[it.parent_id].children.push(it);
+      } else {
+        roots.push(it);
+      }
+    });
+    return roots;
+  };
+  const flattened: any[] = [];
+  const walk = (nodes: any[], depth = 0) => {
+    nodes.forEach((n) => {
+      flattened.push({ ...n, depth });
+      if (n.children) walk(n.children, depth + 1);
+    });
+  };
+  const treeRoots = buildTree(rows as any[]);
+  walk(treeRoots, 0);
+
   const refetch = () => qc.invalidateQueries({ queryKey: ["categories"] });
 
   return (
     <div>
-      <PageHeader title={t("categories")}>
-        {can("items.manage") && <CategoryForm onDone={refetch} />}
+      <PageHeader title={t("categories") }>
+        {can("items.manage") && <CategoryForm categories={rows} onDone={refetch} />}
       </PageHeader>
       <DataTable
-        rows={rows}
+        rows={flattened}
         columns={[
-          { key: "name_ar", header: t("name_ar"), cell: (r: any) => r.name_ar },
+          { key: "name_ar", header: t("name_ar"), cell: (r: any) => <span style={{ marginLeft: `${(r.depth ?? 0) * 1}rem` }}>{r.name_ar}</span> },
           { key: "name_en", header: t("name_en"), cell: (r: any) => r.name_en ?? "-" },
           { key: "parent", header: t("parent_category"), cell: (r: any) => rows.find((x: any) => x.id === r.parent_id)?.name_ar ?? "-" },
           {
@@ -63,22 +89,54 @@ function CategoryForm({ row, categories, onDone }: { row?: any; categories?: any
   const [name_ar, setNameAr] = useState(row?.name_ar ?? "");
   const [name_en, setNameEn] = useState(row?.name_en ?? "");
   const [parent_id, setParentId] = useState<string | null>(row?.parent_id ?? null);
+  const [type, setType] = useState<string>(row?.parent_id ? "sub" : "primary");
+  const [submitting, setSubmitting] = useState(false);
+
+  // helper: detect if candidateId is ancestor of nodeId (to avoid cycles)
+  const isAncestor = (candidateId: string | null, nodeId: string | null) => {
+    if (!candidateId || !nodeId || !categories) return false;
+    const map = (categories as any[]).reduce((acc: any, it: any) => (acc[it.id] = it, acc), {} as Record<string, any>);
+    let cur = candidateId;
+    while (cur) {
+      if (cur === nodeId) return true;
+      const next = map[cur]?.parent_id;
+      if (!next) break;
+      cur = next;
+    }
+    return false;
+  };
+
+  const allowedParents = (categories ?? []).filter((c: any) => c.id !== row?.id && !isAncestor(c.id, row?.id ?? null));
 
   const submit = async () => {
-    const payload: any = { name_ar, name_en: name_en || null, parent_id };
-    const { data: u } = await supabase.auth.getUser();
-    if (row) {
-      payload.updated_by = u.user?.id;
-      const { error } = await supabase.from("categories").update(payload).eq("id", row.id);
-      if (error) return toast.error(error.message);
-    } else {
-      payload.created_by = u.user?.id;
-      const { error } = await supabase.from("categories").insert(payload);
-      if (error) return toast.error(error.message);
+    if (submitting) return;
+    setSubmitting(true);
+    try {
+      const trimmedName = name_ar.trim();
+      // prevent duplicate name under same parent
+      const exists = (categories ?? []).some((c: any) => c.name_ar?.trim() === trimmedName && ((type === "primary" && !c.parent_id) || c.parent_id === (type === "sub" ? parent_id : null)));
+      if (exists) {
+        toast.error(t("already_exists"));
+        return;
+      }
+
+      const payload: any = { name_ar: trimmedName, name_en: name_en?.trim() || null, parent_id: type === "sub" ? parent_id : null };
+      const { data: u } = await supabase.auth.getUser();
+      if (row) {
+        payload.updated_by = u.user?.id;
+        const { error } = await supabase.from("categories").update(payload).eq("id", row.id);
+        if (error) return toast.error(error.message);
+      } else {
+        payload.created_by = u.user?.id;
+        const { error } = await supabase.from("categories").insert(payload);
+        if (error) return toast.error(error.message);
+      }
+      toast.success(t("save_success"));
+      setOpen(false);
+      onDone();
+    } finally {
+      setSubmitting(false);
     }
-    toast.success(t("save_success"));
-    setOpen(false);
-    onDone();
   };
 
   return (
@@ -91,22 +149,36 @@ function CategoryForm({ row, categories, onDone }: { row?: any; categories?: any
         <div className="space-y-3">
           <div><Label>{t("name_ar")}</Label><Input value={name_ar} onChange={(e) => setNameAr(e.target.value)} /></div>
           <div><Label>{t("name_en")}</Label><Input value={name_en} onChange={(e) => setNameEn(e.target.value)} /></div>
+
           <div>
-            <Label>{t("parent_category")}</Label>
-            <Select value={parent_id ?? "_"} onValueChange={(v) => setParentId(v === "_" ? null : v)}>
+            <Label>{t("category_type")}</Label>
+            <Select value={type} onValueChange={(v) => { setType(v); if (v === "primary") setParentId(null); }}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="_">{t("none")}</SelectItem>
-                {(categories ?? []).filter((c: any) => c.id !== row?.id).map((c: any) => (
-                  <SelectItem key={c.id} value={c.id}>{c.name_ar}</SelectItem>
-                ))}
+                <SelectItem value="primary">{t("primary")}</SelectItem>
+                <SelectItem value="sub">{t("subcategory")}</SelectItem>
               </SelectContent>
             </Select>
           </div>
+
+          {type === "sub" && (
+            <div>
+              <Label>{t("parent_category")}</Label>
+              <Select value={parent_id ?? "_"} onValueChange={(v) => setParentId(v === "_" ? null : v)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="_">{t("none")}</SelectItem>
+                  {allowedParents.map((c: any) => (
+                    <SelectItem key={c.id} value={c.id}>{c.name_ar}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => setOpen(false)}>{t("cancel")}</Button>
-          <Button onClick={submit} disabled={!name_ar}>{t("save")}</Button>
+          <Button onClick={submit} disabled={!name_ar || submitting}>{submitting ? t("saving") : t("save")}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
