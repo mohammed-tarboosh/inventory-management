@@ -171,7 +171,27 @@ function InvoiceForm({ suppliers, items, currencies, onDone }: { suppliers: any[
           </div>
           <div>
             <Label>{t("currency")}</Label>
-            <Select value={currency_code} onValueChange={(v) => { setCur(v); if (v === baseCur) setRate(1); }}>
+            <Select value={currency_code} onValueChange={async (v) => {
+              setCur(v);
+              if (v === baseCur) {
+                setRate(1);
+                return;
+              }
+              // fetch latest exchange rate for selected currency
+              const { data: latest, error } = await supabase
+                .from("exchange_rates")
+                .select("rate_to_base")
+                .eq("currency_code", v)
+                .order("rate_date", { ascending: false })
+                .limit(1)
+                .maybeSingle();
+              if (error) {
+                console.error(error);
+                setRate(1);
+              } else {
+                setRate(latest?.rate_to_base ?? 1);
+              }
+            }}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 {currencies.map((c) => <SelectItem key={c.code} value={c.code}>{c.code} - {c.name_ar}</SelectItem>)}

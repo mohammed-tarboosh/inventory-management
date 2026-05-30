@@ -51,7 +51,7 @@ const dict = {
     invoice_no: "رقم الفاتورة",
     invoice_date: "تاريخ الفاتورة",
     supplier: "المورد",
-    payment_type: "نوع الدفع",
+    payment_type: "نوع الفاتورة",
     cash: "نقدي",
     credit: "آجل",
     new_invoice: "فاتورة جديدة",
