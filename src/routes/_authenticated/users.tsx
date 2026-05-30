@@ -6,11 +6,15 @@ import { DataTable } from "@/components/DataTable";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { ConfirmDelete } from "@/components/ConfirmDelete";
 import { useI18n } from "@/lib/i18n";
 import { usePermissions } from "@/lib/permissions";
 import { ShieldCheck } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { createUser, updateUser, deleteUser, adminResetPassword } from "@/lib/api/users.functions";
 
 export const Route = createFileRoute("/_authenticated/users")({ component: Page });
 
@@ -35,14 +39,38 @@ function Page() {
 
   return (
     <div>
-      <PageHeader title={t("users")} />
+      <PageHeader title={t("users")}>{can("users.manage") && (
+        <UserDialog trigger={<Button>{t("new_user")}</Button>} onDone={refetch} />
+      )}</PageHeader>
       <DataTable rows={profiles as any[]} columns={[
         { key: "u", header: t("username"), cell: (r: any) => r.username },
         { key: "n", header: t("full_name"), cell: (r: any) => r.full_name ?? "-" },
         { key: "a", header: t("is_active"), cell: (r: any) => r.is_active ? "✓" : "✗" },
         { key: "g", header: t("role_group"), cell: (r: any) => (userGroups as any[]).filter(g => g.user_id === r.id).map(g => (groups as any[]).find(x => x.id === g.group_id)?.name).join(", ") || "-" },
-        { key: "act", header: t("actions"), cell: (r: any) => can("permissions.manage") && (
-          <PermDialog profile={r} permissions={permissions as any[]} groups={groups as any[]} userGroups={userGroups as any[]} userPerms={userPerms as any[]} onDone={refetch} locale={locale} />
+        { key: "act", header: t("actions"), cell: (r: any) => (
+          <div className="flex items-center gap-2">
+            {can("users.manage") && (
+              <>
+                <UserDialog profile={r} trigger={<Button variant="ghost" size="icon">✎</Button>} onDone={refetch} />
+                <ConfirmDelete trigger={<Button variant="ghost" size="icon" className="text-destructive">🗑</Button>} onConfirm={async () => {
+                  try {
+                    await deleteUser({ data: { userId: r.id } });
+                    toast.success(t("delete_success"));
+                    refetch();
+                  } catch (err: any) { toast.error(err?.message || String(err)); }
+                }} />
+                <Button variant="ghost" size="icon" onClick={async () => {
+                  try {
+                    await adminResetPassword({ data: { userId: r.id } });
+                    toast.success(t("reset_email_sent"));
+                  } catch (err: any) { toast.error(err?.message || String(err)); }
+                }}>⟳</Button>
+              </>
+            )}
+            {can("permissions.manage") && (
+              <PermDialog profile={r} permissions={permissions as any[]} groups={groups as any[]} userGroups={userGroups as any[]} userPerms={userPerms as any[]} onDone={refetch} locale={locale} />
+            )}
+          </div>
         ) },
       ]} />
     </div>
@@ -88,7 +116,7 @@ function PermDialog({ profile, permissions, groups, userGroups, userPerms, onDon
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild><Button variant="ghost" size="icon"><ShieldCheck className="h-4 w-4" /></Button></DialogTrigger>
-      <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+      <DialogContent className="w-[calc(100vw-1rem)] max-w-2xl max-h-[80vh] overflow-y-auto">
         <DialogHeader><DialogTitle>{t("permissions")} - {profile.username}</DialogTitle></DialogHeader>
         <div className="space-y-4">
           <div>
@@ -107,7 +135,7 @@ function PermDialog({ profile, permissions, groups, userGroups, userPerms, onDon
             {Object.entries(cats).map(([cat, perms]) => (
               <div key={cat} className="mb-3">
                 <div className="text-sm text-muted-foreground mb-1">{cat}</div>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                   {perms.map((p: any) => (
                     <label key={p.key} className="flex items-center gap-2 cursor-pointer">
                       <Checkbox checked={selectedPerms.has(p.key)} onCheckedChange={() => toggle(selectedPerms, setSelectedPerms, p.key)} />
@@ -122,6 +150,84 @@ function PermDialog({ profile, permissions, groups, userGroups, userPerms, onDon
         <DialogFooter>
           <Button variant="outline" onClick={() => setOpen(false)}>{t("cancel")}</Button>
           <Button onClick={save}>{t("save")}</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function UserDialog({ profile, trigger, onDone }: any) {
+  const isEdit = !!profile;
+  const { t } = useI18n();
+  const [open, setOpen] = useState(false);
+  const [username, setUsername] = useState("");
+  const [fullName, setFullName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [isActive, setIsActive] = useState(true);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+    if (isEdit) {
+      setUsername(profile.username || "");
+      setFullName(profile.full_name || "");
+      setEmail(profile.email || "");
+      setIsActive(!!profile.is_active);
+    } else {
+      setUsername(""); setFullName(""); setEmail(""); setPassword(""); setIsActive(true);
+    }
+  }, [open, isEdit, profile]);
+
+  const save = async () => {
+    setLoading(true);
+    try {
+      if (isEdit) {
+        await updateUser({ data: { userId: profile.id, username, full_name: fullName, email, is_active: isActive } });
+        toast.success(t("save_success"));
+      } else {
+        await createUser({ data: { username, full_name: fullName, email, password, is_active: isActive } });
+        toast.success(t("save_success"));
+      }
+      setOpen(false);
+      onDone?.();
+    } catch (err: any) {
+      toast.error(err?.message || String(err));
+    } finally { setLoading(false); }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>{trigger ?? <Button>{isEdit ? t("edit") : t("new_user")}</Button>}</DialogTrigger>
+      <DialogContent className="w-[calc(100vw-1rem)] max-w-md">
+        <DialogHeader><DialogTitle>{isEdit ? t("edit_user") : t("new_user")}</DialogTitle></DialogHeader>
+        <div className="space-y-4">
+          <div>
+            <Label>{t("username")}</Label>
+            <Input value={username} onChange={(e: any) => setUsername(e.target.value)} required />
+          </div>
+          <div>
+            <Label>{t("full_name")}</Label>
+            <Input value={fullName} onChange={(e: any) => setFullName(e.target.value)} />
+          </div>
+          <div>
+            <Label>{t("email")}</Label>
+            <Input value={email} onChange={(e: any) => setEmail(e.target.value)} />
+          </div>
+          {!isEdit && (
+            <div>
+              <Label>{t("password")}</Label>
+              <Input type="password" value={password} onChange={(e: any) => setPassword(e.target.value)} required />
+            </div>
+          )}
+          <div className="flex items-center gap-2">
+            <Checkbox checked={isActive} onCheckedChange={(v) => setIsActive(Boolean(v))} />
+            <span>{t("is_active")}</span>
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setOpen(false)}>{t("cancel")}</Button>
+          <Button onClick={save} disabled={loading}>{t("save")}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

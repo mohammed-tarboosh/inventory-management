@@ -79,7 +79,7 @@ function CurrencyForm({ onDone }: { onDone: () => void }) {
       <DialogTrigger asChild><Button><Plus className="h-4 w-4 me-1" />{t("add")}</Button></DialogTrigger>
       <DialogContent>
         <DialogHeader><DialogTitle>{t("currencies")}</DialogTitle></DialogHeader>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div><Label>{t("code")}</Label><Input value={code} onChange={(e) => setCode(e.target.value)} /></div>
           <div><Label>Symbol</Label><Input value={sym} onChange={(e) => setSym(e.target.value)} /></div>
           <div><Label>{t("name_ar")}</Label><Input value={ar} onChange={(e) => setAr(e.target.value)} /></div>

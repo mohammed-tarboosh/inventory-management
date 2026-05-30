@@ -10,6 +10,7 @@
 - `SUPABASE_URL` — عنوان Supabase لخدمات الخادم/الميدلوير.
 - `SUPABASE_PUBLISHABLE_KEY` — مفتاح publishable على مستوى الخادم عند الحاجة.
 - `SUPABASE_SERVICE_ROLE_KEY` — مفتاح service role (server-only، احفظه سرياً).
+- `SUPABASE_SERVICE_ROLE` — (alias) service role key used by new server functions. Keep this secret and only set it in server/CI environments.
 - `NODE_ENV` — `development` أو `production`.
 
 ملاحظات:
@@ -22,6 +23,7 @@
 ```env
 SUPABASE_URL=http://127.0.0.1:54321
 SUPABASE_PUBLISHABLE_KEY=sb_publishable_xxx
+SUPABASE_SERVICE_ROLE=sb_secret_xxx
 VITE_SUPABASE_URL=http://127.0.0.1:54321
 VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_xxx
 VITE_SUPABASE_PROJECT_ID=inventory-management

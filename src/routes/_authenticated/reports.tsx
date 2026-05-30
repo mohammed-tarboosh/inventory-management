@@ -63,7 +63,7 @@ function Page() {
   return (
     <div>
       <PageHeader title={t("reports")} />
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4 p-4 bg-card border rounded-md">
+      <div className="grid grid-cols-1 gap-3 mb-4 p-4 bg-card border rounded-md sm:grid-cols-2 lg:grid-cols-4">
         <div><Label>{t("from_date")}</Label><Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} /></div>
         <div><Label>{t("to_date")}</Label><Input type="date" value={to} onChange={(e) => setTo(e.target.value)} /></div>
       </div>

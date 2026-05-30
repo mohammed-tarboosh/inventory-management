@@ -82,7 +82,7 @@ function Page() {
   return (
     <div>
       <PageHeader title={t("items")}>
-        <Input className="w-48" placeholder={t("search")} value={search} onChange={(e) => setSearch(e.target.value)} />
+        <Input className="w-full sm:w-48" placeholder={t("search")} value={search} onChange={(e) => setSearch(e.target.value)} />
         <Button variant="outline" onClick={handleExport}><Download className="h-4 w-4 me-1" />{t("export_excel")}</Button>
         {can("items.import") && <ImportButton categories={categories as any[]} units={units as any[]} onDone={refetch} />}
         {can("items.manage") && <ItemForm categories={categories as any[]} units={units as any[]} onDone={refetch} />}
@@ -149,7 +149,7 @@ function ItemForm({ row, categories, units, onDone }: { row?: any; categories: a
       </DialogTrigger>
       <DialogContent>
         <DialogHeader><DialogTitle>{row ? t("edit") : t("add")} - {t("items")}</DialogTitle></DialogHeader>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div><Label>{t("code")}</Label><Input value={code} onChange={(e) => setCode(e.target.value)} /></div>
           <div><Label>{t("name_ar")}</Label><Input value={name_ar} onChange={(e) => setNameAr(e.target.value)} /></div>
           <div><Label>{t("name_en")}</Label><Input value={name_en} onChange={(e) => setNameEn(e.target.value)} /></div>

@@ -64,7 +64,7 @@ function Page() {
         <Button variant="outline" onClick={exportXlsx}><Download className="h-4 w-4 me-1" />{t("export_excel")}</Button>
         <Button variant="outline" onClick={exportPdf}><FileText className="h-4 w-4 me-1" />{t("export_pdf")}</Button>
       </PageHeader>
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4 p-4 bg-card border rounded-md">
+      <div className="grid grid-cols-1 gap-3 mb-4 p-4 bg-card border rounded-md sm:grid-cols-2 lg:grid-cols-4">
         <div><Label>{t("from_date")}</Label><Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} /></div>
         <div><Label>{t("to_date")}</Label><Input type="date" value={to} onChange={(e) => setTo(e.target.value)} /></div>
         <div>

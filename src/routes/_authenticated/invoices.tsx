@@ -143,9 +143,9 @@ function InvoiceForm({ suppliers, items, currencies, onDone }: { suppliers: any[
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild><Button><Plus className="h-4 w-4 me-1" />{t("new_invoice")}</Button></DialogTrigger>
-      <DialogContent className="max-w-4xl">
+      <DialogContent className="w-[calc(100vw-1rem)] max-w-4xl">
         <DialogHeader><DialogTitle>{t("new_invoice")}</DialogTitle></DialogHeader>
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
           <div><Label>{t("invoice_no")}</Label><Input value={invoice_no} onChange={(e) => setNo(e.target.value)} /></div>
           <div><Label>{t("invoice_date")}</Label><Input type="date" value={invoice_date} onChange={(e) => setDate(e.target.value)} /></div>
           <div>
@@ -180,14 +180,14 @@ function InvoiceForm({ suppliers, items, currencies, onDone }: { suppliers: any[
           <div><Label>{t("exchange_rate")}</Label><Input type="number" step="0.0001" value={exchange_rate} disabled={!isForeign} onChange={(e) => setRate(Number(e.target.value))} /></div>
         </div>
 
-        <div className="border rounded-md p-3 space-y-2">
-          <div className="flex items-center justify-between">
+        <div className="border rounded-md p-3 space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <strong>{t("add_item")}</strong>
             <Button size="sm" variant="outline" onClick={() => setLines([...lines, { item_id: null, quantity: 1, price_foreign: 0 }])}>
               <Plus className="h-4 w-4 me-1" />{t("add")}
             </Button>
           </div>
-          <div className="grid grid-cols-12 gap-2 text-sm font-semibold text-muted-foreground">
+          <div className="hidden grid-cols-12 gap-2 text-sm font-semibold text-muted-foreground md:grid">
             <div className="col-span-5">{t("item")}</div>
             <div className="col-span-2">{t("quantity")}</div>
             <div className="col-span-2">{isForeign ? t("price_foreign") : t("price_local")}</div>
@@ -197,8 +197,9 @@ function InvoiceForm({ suppliers, items, currencies, onDone }: { suppliers: any[
           {lines.map((l, idx) => {
             const lt = Number(l.quantity) * Number(l.price_foreign);
             return (
-              <div key={idx} className="grid grid-cols-12 gap-2 items-center">
-                <div className="col-span-5">
+              <div key={idx} className="rounded-md border p-3 space-y-3 md:rounded-none md:border-0 md:p-0 md:grid md:grid-cols-12 md:gap-2 md:items-center">
+                <div className="space-y-1 md:col-span-5 md:space-y-0">
+                  <Label className="text-xs md:hidden">{t("item")}</Label>
                   <Select value={l.item_id ?? ""} onValueChange={(v) => { const n = [...lines]; n[idx] = { ...n[idx], item_id: v }; setLines(n); }}>
                     <SelectTrigger><SelectValue placeholder={t("select")} /></SelectTrigger>
                     <SelectContent>
@@ -206,10 +207,21 @@ function InvoiceForm({ suppliers, items, currencies, onDone }: { suppliers: any[
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="col-span-2"><Input type="number" step="0.01" value={l.quantity} onChange={(e) => { const n = [...lines]; n[idx] = { ...n[idx], quantity: Number(e.target.value) }; setLines(n); }} /></div>
-                <div className="col-span-2"><Input type="number" step="0.01" value={l.price_foreign} onChange={(e) => { const n = [...lines]; n[idx] = { ...n[idx], price_foreign: Number(e.target.value) }; setLines(n); }} /></div>
-                <div className="col-span-2 text-sm">{fmtNum(lt, 2)}</div>
-                <div className="col-span-1"><Button size="icon" variant="ghost" onClick={() => setLines(lines.filter((_, i) => i !== idx))}><Trash2 className="h-4 w-4" /></Button></div>
+                <div className="space-y-1 md:col-span-2 md:space-y-0">
+                  <Label className="text-xs md:hidden">{t("quantity")}</Label>
+                  <Input type="number" step="0.01" value={l.quantity} onChange={(e) => { const n = [...lines]; n[idx] = { ...n[idx], quantity: Number(e.target.value) }; setLines(n); }} />
+                </div>
+                <div className="space-y-1 md:col-span-2 md:space-y-0">
+                  <Label className="text-xs md:hidden">{isForeign ? t("price_foreign") : t("price_local")}</Label>
+                  <Input type="number" step="0.01" value={l.price_foreign} onChange={(e) => { const n = [...lines]; n[idx] = { ...n[idx], price_foreign: Number(e.target.value) }; setLines(n); }} />
+                </div>
+                <div className="flex items-center justify-between md:col-span-2 md:block">
+                  <span className="text-xs font-medium text-muted-foreground md:hidden">{t("line_total")}</span>
+                  <div className="text-sm">{fmtNum(lt, 2)}</div>
+                </div>
+                <div className="flex justify-end md:col-span-1">
+                  <Button size="icon" variant="ghost" onClick={() => setLines(lines.filter((_, i) => i !== idx))}><Trash2 className="h-4 w-4" /></Button>
+                </div>
               </div>
             );
           })}

@@ -146,8 +146,8 @@ function TxForm({ customers, currencies, defaultCustomer, onDone }: { customers:
       <DialogTrigger asChild><Button><Plus className="h-4 w-4 me-1" />{t("new_customer_transaction")}</Button></DialogTrigger>
       <DialogContent>
         <DialogHeader><DialogTitle>{t("new_customer_transaction")}</DialogTitle></DialogHeader>
-        <div className="grid grid-cols-2 gap-3">
-          <div className="col-span-2">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div className="sm:col-span-2">
             <Label>{t("customers")}</Label>
             <Select value={customer_id ?? ""} onValueChange={setCustomer}>
               <SelectTrigger><SelectValue placeholder={t("select")} /></SelectTrigger>
@@ -175,7 +175,7 @@ function TxForm({ customers, currencies, defaultCustomer, onDone }: { customers:
           </div>
           <div><Label>{t("exchange_rate")}</Label><Input type="number" step="0.0001" value={exchange_rate} disabled={currency_code === baseCur} onChange={(e) => setRate(Number(e.target.value))} /></div>
           <div><Label>{t("invoice_ref")}</Label><Input value={invoice_ref} onChange={(e) => setRef(e.target.value)} /></div>
-          <div className="col-span-2"><Label>{t("notes")}</Label><Input value={notes} onChange={(e) => setNotes(e.target.value)} /></div>
+          <div className="sm:col-span-2"><Label>{t("notes")}</Label><Input value={notes} onChange={(e) => setNotes(e.target.value)} /></div>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => setOpen(false)}>{t("cancel")}</Button>
