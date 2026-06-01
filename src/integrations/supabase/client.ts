@@ -2,10 +2,24 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
+function resolveSupabaseUrl(rawUrl: string) {
+  if (typeof window === 'undefined') return rawUrl;
+
+  try {
+    const url = new URL(rawUrl);
+    if (url.hostname === 'localhost' || url.hostname === '127.0.0.1') {
+      url.hostname = window.location.hostname;
+    }
+    return url.toString();
+  } catch {
+    return rawUrl;
+  }
+}
+
 function createSupabaseClient() {
   // Use import.meta.env for client-side (Vite build-time replacement)
   // Fall back to process.env for SSR (server-side rendering)
-  const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
+  const SUPABASE_URL = resolveSupabaseUrl(import.meta.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || '');
   const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || process.env.SUPABASE_PUBLISHABLE_KEY;
 
   if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {

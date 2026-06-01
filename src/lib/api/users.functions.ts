@@ -3,6 +3,7 @@ import { z } from "zod";
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "../../integrations/supabase/types";
 import { getServerConfig } from "../config.server";
+import { resolveAuthEmail } from "../auth";
 
 function getAdminSupabase() {
   const config = getServerConfig();
@@ -28,9 +29,22 @@ export const createUser = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     const client = getAdminSupabase();
+    const resolvedEmail = data.email ?? resolveAuthEmail(data.username).email;
+
+    if (!resolvedEmail) {
+      throw new Error("Email is required for creating a user");
+    }
+
+    const { data: existingProfile, error: existingError } = await client
+      .from("profiles")
+      .select("id")
+      .eq("username", data.username)
+      .maybeSingle();
+    if (existingError) throw existingError;
+    if (existingProfile) throw new Error("Username already exists");
 
     const { data: created, error: createError } = await client.auth.admin.createUser({
-      email: data.email,
+      email: resolvedEmail,
       password: data.password,
       email_confirm: true,
       user_metadata: {
@@ -43,15 +57,24 @@ export const createUser = createServerFn({ method: "POST" })
 
     const userId = created.user.id;
 
-    const profileInsert = await client.from("profiles").insert({
-      id: userId,
-      username: data.username,
-      full_name: data.full_name ?? null,
-      is_active: data.is_active ?? true,
-    });
-    if (profileInsert.error) throw profileInsert.error;
+    const profileUpdate = await client
+      .from("profiles")
+      .update({
+        username: data.username,
+        full_name: data.full_name ?? null,
+        is_active: data.is_active ?? true,
+      })
+      .eq("id", userId)
+      .select()
+      .maybeSingle();
+    if (profileUpdate.error) throw profileUpdate.error;
 
-    return { user: { id: userId, email: data.email ?? null, username: data.username, full_name: data.full_name ?? null } };
+    if (typeof data.is_active === "boolean" && data.is_active === false) {
+      const { error: banError } = await client.auth.admin.updateUserById(userId, { ban_duration: "876000h" });
+      if (banError) throw banError;
+    }
+
+    return { user: { id: userId, email: resolvedEmail, username: data.username, full_name: data.full_name ?? null } };
   });
 
 export const updateUser = createServerFn({ method: "POST" })
