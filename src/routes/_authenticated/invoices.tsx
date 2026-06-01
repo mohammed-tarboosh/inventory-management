@@ -5,6 +5,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { DataTable } from "@/components/DataTable";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -14,8 +15,8 @@ import { usePermissions } from "@/lib/permissions";
 import { ConfirmDelete } from "@/components/ConfirmDelete";
 import { fmtNum, fmtDate, todayStr } from "@/lib/format";
 import { exportTablePDF } from "@/lib/pdf";
-import { Plus, Eye, Printer, Trash2 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { Plus, Eye, Printer, Trash2, Pencil } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/invoices")({ component: Page });
@@ -24,6 +25,7 @@ function Page() {
   const { t } = useI18n();
   const { can } = usePermissions();
   const qc = useQueryClient();
+  const [editingInvoice, setEditingInvoice] = useState<any | null>(null);
 
   const { data: invoices = [] } = useQuery({
     queryKey: ["purchase_invoices"],
@@ -44,7 +46,16 @@ function Page() {
   return (
     <div>
       <PageHeader title={t("invoices")}>
-        {can("invoices.manage") && <InvoiceForm suppliers={suppliers as any[]} items={items as any[]} currencies={currencies as any[]} onDone={refetch} />}
+        {can("invoices.manage") && (
+          <InvoiceForm
+            suppliers={suppliers as any[]}
+            items={items as any[]}
+            currencies={currencies as any[]}
+            onDone={refetch}
+            editing={editingInvoice}
+            onCancelEdit={() => setEditingInvoice(null)}
+          />
+        )}
       </PageHeader>
       <DataTable
         rows={invoices}
@@ -60,11 +71,16 @@ function Page() {
             key: "actions", header: t("actions"), className: "w-40",
             cell: (r: any) => (
               <div className="flex gap-1">
+                {can("invoices.manage") && (
+                  <Button variant="ghost" size="icon" onClick={() => setEditingInvoice(r)}>
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                )}
                 <InvoiceView invoice={r} suppliers={suppliers as any[]} items={items as any[]} />
                 {can("invoices.manage") && (
                   <ConfirmDelete onConfirm={async () => {
                     const { error } = await supabase.from("purchase_invoices").delete().eq("id", r.id);
-                    if (error) toast.error(error.message); else { toast.success(t("save_success")); refetch(); }
+                    if (error) toast.error(error.message); else { toast.success(t("delete_success")); refetch(); }
                   }} />
                 )}
               </div>
@@ -78,7 +94,7 @@ function Page() {
 
 type Line = { item_id: string | null; quantity: number; price_foreign: number };
 
-function InvoiceForm({ suppliers, items, currencies, onDone }: { suppliers: any[]; items: any[]; currencies: any[]; onDone: () => void }) {
+function InvoiceForm({ suppliers, items, currencies, onDone, editing, onCancelEdit }: { suppliers: any[]; items: any[]; currencies: any[]; onDone: () => void; editing?: any | null; onCancelEdit?: () => void }) {
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const [invoice_no, setNo] = useState("");
@@ -90,8 +106,53 @@ function InvoiceForm({ suppliers, items, currencies, onDone }: { suppliers: any[
   const [exchange_rate, setRate] = useState<number>(1);
   const [notes, setNotes] = useState("");
   const [lines, setLines] = useState<Line[]>([{ item_id: null, quantity: 1, price_foreign: 0 }]);
+  const [showAddSupplier, setShowAddSupplier] = useState(false);
 
   const isForeign = currency_code !== baseCur;
+
+  const reset = () => {
+    setNo("");
+    setDate(todayStr());
+    setSupplier(null);
+    setPay("cash");
+    setCur(baseCur);
+    setRate(1);
+    setNotes("");
+    setLines([{ item_id: null, quantity: 1, price_foreign: 0 }]);
+  };
+
+  useEffect(() => {
+    if (!editing) {
+      reset();
+      return;
+    }
+
+    const load = async () => {
+      setOpen(true);
+      setNo(editing.invoice_no ?? "");
+      setDate(editing.invoice_date ?? todayStr());
+      setSupplier(editing.supplier_id ?? null);
+      setPay(editing.payment_type ?? "cash");
+      setCur(editing.currency_code ?? baseCur);
+      setRate(editing.exchange_rate ?? 1);
+      setNotes(editing.notes ?? "");
+      const { data: existingLines, error } = await supabase
+        .from("purchase_invoice_items")
+        .select("*")
+        .eq("invoice_id", editing.id)
+        .order("created_at", { ascending: true });
+      if (error) {
+        toast.error(error.message);
+        setLines([{ item_id: null, quantity: 1, price_foreign: 0 }]);
+        return;
+      }
+      setLines((existingLines?.length ?? 0) > 0
+        ? existingLines!.map((l: any) => ({ item_id: l.item_id, quantity: Number(l.quantity), price_foreign: Number(l.price_foreign) }))
+        : [{ item_id: null, quantity: 1, price_foreign: 0 }]);
+    };
+
+    void load();
+  }, [editing, baseCur]);
 
   const totals = useMemo(() => {
     let tf = 0, tl = 0;
@@ -103,15 +164,58 @@ function InvoiceForm({ suppliers, items, currencies, onDone }: { suppliers: any[
     return { tf, tl };
   }, [lines, exchange_rate]);
 
-  const reset = () => {
-    setNo(""); setDate(todayStr()); setSupplier(null); setPay("cash");
-    setCur(baseCur); setRate(1); setNotes(""); setLines([{ item_id: null, quantity: 1, price_foreign: 0 }]);
-  };
-
   const submit = async () => {
     const valid = lines.filter((l) => l.item_id && l.quantity > 0);
     if (!invoice_no || !valid.length) { toast.error("invalid"); return; }
     const { data: u } = await supabase.auth.getUser();
+    const itemsPayload = valid.map((l) => {
+      const lf = Number(l.quantity) * Number(l.price_foreign);
+      const ll = lf * Number(exchange_rate);
+      return {
+        item_id: l.item_id!,
+        quantity: l.quantity,
+        price_foreign: l.price_foreign,
+        price_local: Number(l.price_foreign) * Number(exchange_rate),
+        line_total_local: ll,
+        created_by: u.user?.id,
+        updated_by: u.user?.id,
+      };
+    });
+
+    if (editing?.id) {
+      const { error } = await supabase
+        .from("purchase_invoices")
+        .update({
+          invoice_no,
+          invoice_date,
+          supplier_id,
+          payment_type,
+          currency_code,
+          exchange_rate,
+          total_foreign: totals.tf,
+          total_local: totals.tl,
+          notes: notes || null,
+          updated_by: u.user?.id,
+        })
+        .eq("id", editing.id);
+      if (error) { toast.error(error.message); return; }
+
+      const { error: deleteLinesError } = await supabase.from("purchase_invoice_items").delete().eq("invoice_id", editing.id);
+      if (deleteLinesError) { toast.error(deleteLinesError.message); return; }
+
+      const { error: insertLinesError } = await supabase.from("purchase_invoice_items").insert(
+        itemsPayload.map((item) => ({ ...item, invoice_id: editing.id }))
+      );
+      if (insertLinesError) { toast.error(insertLinesError.message); return; }
+
+      toast.success(t("edit_success"));
+      reset();
+      setOpen(false);
+      onDone();
+      if (onCancelEdit) onCancelEdit();
+      return;
+    }
+
     const { data: inv, error } = await supabase
       .from("purchase_invoices")
       .insert({
@@ -123,41 +227,128 @@ function InvoiceForm({ suppliers, items, currencies, onDone }: { suppliers: any[
       .select()
       .single();
     if (error || !inv) { toast.error(error?.message ?? ""); return; }
-    const itemsPayload = valid.map((l) => {
-      const lf = Number(l.quantity) * Number(l.price_foreign);
-      const ll = lf * Number(exchange_rate);
-      return {
-        invoice_id: inv.id,
-        item_id: l.item_id!,
-        quantity: l.quantity,
-        price_foreign: l.price_foreign,
-        price_local: Number(l.price_foreign) * Number(exchange_rate),
-        line_total_local: ll,
-      };
-    });
-    const { error: e2 } = await supabase.from("purchase_invoice_items").insert(itemsPayload);
+    const { error: e2 } = await supabase.from("purchase_invoice_items").insert(itemsPayload.map((item) => ({ ...item, invoice_id: inv.id })));
     if (e2) { toast.error(e2.message); return; }
     toast.success(t("save_success"));
     reset(); setOpen(false); onDone();
   };
 
+  const qc = useQueryClient();
+
+  const handleCurrencyChange = async (v: string) => {
+    setCur(v);
+    if (v === baseCur) {
+      setRate(1);
+      return;
+    }
+    const { data: latest, error } = await supabase
+      .from("exchange_rates")
+      .select("rate_to_base")
+      .eq("currency_code", v)
+      .order("rate_date", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (error) {
+      console.error(error);
+      setRate(1);
+    } else {
+      setRate(latest?.rate_to_base ?? 1);
+    }
+  };
+
+  function SupplierForm({ open, onOpenChange, onCreated }: { open: boolean; onOpenChange: (v: boolean) => void; onCreated: (s: any) => void }) {
+    const { t } = useI18n();
+    const [name, setName] = useState("");
+    const [phone, setPhone] = useState("");
+    const [notes, setNotes] = useState("");
+    const [default_currency, setDefaultCurrency] = useState("_");
+    const [default_payment_type, setDefaultPaymentType] = useState("cash");
+    const { data: currencies = [] } = useQuery({ queryKey: ["currencies"], queryFn: async () => (await supabase.from("currencies").select("*")).data ?? [] });
+
+    const submitSup = async () => {
+      const { data: u } = await supabase.auth.getUser();
+      const payload: any = { name, phone: phone || null, notes: notes || null };
+      payload.default_currency = default_currency === "_" ? null : default_currency || null;
+      payload.default_payment_type = default_payment_type;
+      if (u.user?.id) payload.created_by = u.user.id;
+      const { data: created, error } = await supabase.from("suppliers").insert(payload).select().single();
+      if (error) { toast.error(error.message); return; }
+      toast.success(t("save_success"));
+      onOpenChange(false);
+      onCreated(created);
+      qc.invalidateQueries({ queryKey: ["suppliers"] });
+    };
+
+    return (
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>{t("add_supplier")}</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <div><Label>{t("name")}</Label><Input value={name} onChange={(e) => setName(e.target.value)} /></div>
+            <div><Label>{t("phone")}</Label><Input value={phone} onChange={(e) => setPhone(e.target.value)} /></div>
+            <div>
+              <Label>{t("default_currency")}</Label>
+              <Select value={default_currency} onValueChange={(v) => setDefaultCurrency(v)}>
+                <SelectTrigger><SelectValue placeholder={t("select")} /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="_">{t("none")}</SelectItem>
+                  {currencies.map((c) => <SelectItem key={c.code} value={c.code}>{c.code} - {c.name_ar}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>{t("default_payment_type")}</Label>
+              <Select value={default_payment_type} onValueChange={(v) => setDefaultPaymentType(v)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="cash">{t("cash")}</SelectItem>
+                  <SelectItem value="credit">{t("credit")}</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div><Label>{t("notes")}</Label><Textarea value={notes} onChange={(e) => setNotes(e.target.value)} /></div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => onOpenChange(false)}>{t("cancel")}</Button>
+            <Button onClick={submitSup} disabled={!name}>{t("save")}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild><Button><Plus className="h-4 w-4 me-1" />{t("new_invoice")}</Button></DialogTrigger>
       <DialogContent className="w-[calc(100vw-1rem)] max-w-4xl">
-        <DialogHeader><DialogTitle>{t("new_invoice")}</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>{editing ? t("edit") : t("new_invoice")}</DialogTitle></DialogHeader>
         <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
           <div><Label>{t("invoice_no")}</Label><Input value={invoice_no} onChange={(e) => setNo(e.target.value)} /></div>
           <div><Label>{t("invoice_date")}</Label><DatePicker value={invoice_date} onValueChange={setDate} /></div>
           <div>
             <Label>{t("supplier")}</Label>
-            <Select value={supplier_id ?? "_"} onValueChange={(v) => setSupplier(v === "_" ? null : v)}>
+            <Select value={supplier_id ?? "_"} onValueChange={async (v) => {
+              if (v === "_add") {
+                setShowAddSupplier(true);
+                return;
+              }
+              const id = v === "_" ? null : v;
+              setSupplier(id);
+              if (!id) return;
+              const s = suppliers.find((x) => x.id === id);
+              if (s) {
+                if (s.default_currency) await handleCurrencyChange(s.default_currency);
+                setPay(s.default_payment_type ?? "cash");
+              }
+            }}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="_">{t("none")}</SelectItem>
                 {suppliers.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+                <SelectItem value="_add">+ {t("add_supplier")}</SelectItem>
               </SelectContent>
             </Select>
+            <SupplierForm open={showAddSupplier} onOpenChange={setShowAddSupplier} onCreated={(s) => { setSupplier(s.id); if (s.default_currency) void handleCurrencyChange(s.default_currency); setPay(s.default_payment_type ?? "cash"); }} />
           </div>
           <div>
             <Label>{t("payment_type")}</Label>
@@ -171,27 +362,7 @@ function InvoiceForm({ suppliers, items, currencies, onDone }: { suppliers: any[
           </div>
           <div>
             <Label>{t("currency")}</Label>
-            <Select value={currency_code} onValueChange={async (v) => {
-              setCur(v);
-              if (v === baseCur) {
-                setRate(1);
-                return;
-              }
-              // fetch latest exchange rate for selected currency
-              const { data: latest, error } = await supabase
-                .from("exchange_rates")
-                .select("rate_to_base")
-                .eq("currency_code", v)
-                .order("rate_date", { ascending: false })
-                .limit(1)
-                .maybeSingle();
-              if (error) {
-                console.error(error);
-                setRate(1);
-              } else {
-                setRate(latest?.rate_to_base ?? 1);
-              }
-            }}>
+            <Select value={currency_code} onValueChange={(v) => void handleCurrencyChange(v)}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 {currencies.map((c) => <SelectItem key={c.code} value={c.code}>{c.code} - {c.name_ar}</SelectItem>)}
@@ -254,7 +425,7 @@ function InvoiceForm({ suppliers, items, currencies, onDone }: { suppliers: any[
 
         <div><Label>{t("notes")}</Label><Input value={notes} onChange={(e) => setNotes(e.target.value)} /></div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => setOpen(false)}>{t("cancel")}</Button>
+          <Button variant="outline" onClick={() => { setOpen(false); if (editing && onCancelEdit) onCancelEdit(); }}>{t("cancel")}</Button>
           <Button onClick={submit}>{t("save")}</Button>
         </DialogFooter>
       </DialogContent>

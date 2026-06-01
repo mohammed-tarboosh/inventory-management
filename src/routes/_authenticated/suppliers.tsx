@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useI18n } from "@/lib/i18n";
 import { usePermissions } from "@/lib/permissions";
@@ -53,9 +54,14 @@ function SForm({ row, onDone }: { row?: any; onDone: () => void }) {
   const [name, setName] = useState(row?.name ?? "");
   const [phone, setPhone] = useState(row?.phone ?? "");
   const [notes, setNotes] = useState(row?.notes ?? "");
+  const [default_currency, setDefaultCurrency] = useState(row?.default_currency ?? "_");
+  const [default_payment_type, setDefaultPaymentType] = useState(row?.default_payment_type ?? "cash");
+  const { data: currencies = [] } = useQuery({ queryKey: ["currencies"], queryFn: async () => (await supabase.from("currencies").select("*")).data ?? [] });
   const submit = async () => {
     const { data: u } = await supabase.auth.getUser();
     const payload: any = { name, phone: phone || null, notes: notes || null };
+    payload.default_currency = default_currency === "_" ? null : default_currency || null;
+    payload.default_payment_type = default_payment_type;
     if (row) payload.updated_by = u.user?.id; else payload.created_by = u.user?.id;
     const { error } = row
       ? await supabase.from("suppliers").update(payload).eq("id", row.id)
@@ -73,6 +79,26 @@ function SForm({ row, onDone }: { row?: any; onDone: () => void }) {
         <div className="space-y-3">
           <div><Label>{t("name")}</Label><Input value={name} onChange={(e) => setName(e.target.value)} /></div>
           <div><Label>{t("phone")}</Label><Input value={phone} onChange={(e) => setPhone(e.target.value)} /></div>
+          <div>
+            <Label>{t("default_currency")}</Label>
+            <Select value={default_currency} onValueChange={(v) => setDefaultCurrency(v)}>
+              <SelectTrigger><SelectValue placeholder={t("select")} /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="_">{t("none")}</SelectItem>
+                {currencies.map((c) => <SelectItem key={c.code} value={c.code}>{c.code} - {c.name_ar}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label>{t("default_payment_type")}</Label>
+            <Select value={default_payment_type} onValueChange={(v) => setDefaultPaymentType(v)}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="cash">{t("cash")}</SelectItem>
+                <SelectItem value="credit">{t("credit")}</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
           <div><Label>{t("notes")}</Label><Textarea value={notes} onChange={(e) => setNotes(e.target.value)} /></div>
         </div>
         <DialogFooter>
