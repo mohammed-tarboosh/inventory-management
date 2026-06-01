@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { useI18n } from "@/lib/i18n";
 import { usePermissions } from "@/lib/permissions";
+import { cn } from "@/lib/utils";
 import { Plus, Pencil } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -56,8 +57,13 @@ function SForm({ row, onDone }: { row?: any; onDone: () => void }) {
   const [notes, setNotes] = useState(row?.notes ?? "");
   const [default_currency, setDefaultCurrency] = useState(row?.default_currency ?? "_");
   const [default_payment_type, setDefaultPaymentType] = useState(row?.default_payment_type ?? "cash");
+  const [nameError, setNameError] = useState("");
   const { data: currencies = [] } = useQuery({ queryKey: ["currencies"], queryFn: async () => (await supabase.from("currencies").select("*")).data ?? [] });
   const submit = async () => {
+    if (!name.trim()) {
+      setNameError("الحقل إجباري");
+      return;
+    }
     const { data: u } = await supabase.auth.getUser();
     const payload: any = { name, phone: phone || null, notes: notes || null };
     payload.default_currency = default_currency === "_" ? null : default_currency || null;
@@ -67,7 +73,7 @@ function SForm({ row, onDone }: { row?: any; onDone: () => void }) {
       ? await supabase.from("suppliers").update(payload).eq("id", row.id)
       : await supabase.from("suppliers").insert(payload);
     if (error) return toast.error(error.message);
-    toast.success(t("save_success")); setOpen(false); onDone();
+    toast.success(t("save_success")); setNameError(""); setOpen(false); onDone();
   };
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -77,10 +83,22 @@ function SForm({ row, onDone }: { row?: any; onDone: () => void }) {
       <DialogContent>
         <DialogHeader><DialogTitle>{t("suppliers")}</DialogTitle></DialogHeader>
         <div className="space-y-3">
-          <div><Label>{t("name")}</Label><Input value={name} onChange={(e) => setName(e.target.value)} /></div>
+          <div className="space-y-1">
+            <Label>{t("name")}</Label>
+            <Input
+              value={name}
+              onChange={(e) => {
+                setName(e.target.value);
+                if (nameError) setNameError("");
+              }}
+              className={cn(nameError && "border-destructive focus-visible:ring-destructive")}
+              aria-invalid={!!nameError}
+            />
+            {nameError && <p className="text-xs text-destructive">{nameError}</p>}
+          </div>
           <div><Label>{t("phone")}</Label><Input value={phone} onChange={(e) => setPhone(e.target.value)} /></div>
           <div>
-            <Label>{t("default_currency")}</Label>
+            <Label>العملة الافتراضية</Label>
             <Select value={default_currency} onValueChange={(v) => setDefaultCurrency(v)}>
               <SelectTrigger><SelectValue placeholder={t("select")} /></SelectTrigger>
               <SelectContent>
@@ -90,7 +108,7 @@ function SForm({ row, onDone }: { row?: any; onDone: () => void }) {
             </Select>
           </div>
           <div>
-            <Label>{t("default_payment_type")}</Label>
+            <Label>نوع الدفع الافتراضي</Label>
             <Select value={default_payment_type} onValueChange={(v) => setDefaultPaymentType(v)}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
