@@ -15,6 +15,7 @@ import { usePermissions } from "@/lib/permissions";
 import { ConfirmDelete } from "@/components/ConfirmDelete";
 import { fmtNum, fmtDate, todayStr } from "@/lib/format";
 import { exportTablePDF } from "@/lib/pdf";
+import { cn } from "@/lib/utils";
 import { Plus, Eye, Printer, Trash2, Pencil } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -93,6 +94,7 @@ function Page() {
 }
 
 type Line = { item_id: string | null; quantity: number; price_foreign: number };
+type LineError = { item_id?: string; quantity?: string };
 
 function InvoiceForm({ suppliers, items, currencies, onDone, editing, onCancelEdit }: { suppliers: any[]; items: any[]; currencies: any[]; onDone: () => void; editing?: any | null; onCancelEdit?: () => void }) {
   const { t } = useI18n();
@@ -106,6 +108,7 @@ function InvoiceForm({ suppliers, items, currencies, onDone, editing, onCancelEd
   const [exchange_rate, setRate] = useState<number>(1);
   const [notes, setNotes] = useState("");
   const [lines, setLines] = useState<Line[]>([{ item_id: null, quantity: 1, price_foreign: 0 }]);
+  const [fieldErrors, setFieldErrors] = useState<{ invoice_no?: string; supplier_id?: string; lines: LineError[] }>({ lines: [{}] });
   const [showAddSupplier, setShowAddSupplier] = useState(false);
 
   const isForeign = currency_code !== baseCur;
@@ -119,6 +122,7 @@ function InvoiceForm({ suppliers, items, currencies, onDone, editing, onCancelEd
     setRate(1);
     setNotes("");
     setLines([{ item_id: null, quantity: 1, price_foreign: 0 }]);
+    setFieldErrors({ lines: [{}] });
   };
 
   useEffect(() => {
@@ -165,8 +169,24 @@ function InvoiceForm({ suppliers, items, currencies, onDone, editing, onCancelEd
   }, [lines, exchange_rate]);
 
   const submit = async () => {
+    const nextErrors: { invoice_no?: string; supplier_id?: string; lines: LineError[] } = { lines: lines.map(() => ({})) };
+    if (!invoice_no.trim()) nextErrors.invoice_no = "الحقل إجباري";
+    if (!supplier_id) nextErrors.supplier_id = "الحقل إجباري";
+
+    lines.forEach((line, index) => {
+      if (!line.item_id) nextErrors.lines[index] = { ...nextErrors.lines[index], item_id: "الحقل إجباري" };
+      if (!Number.isFinite(Number(line.quantity)) || Number(line.quantity) <= 0) {
+        nextErrors.lines[index] = { ...nextErrors.lines[index], quantity: "الحقل إجباري" };
+      }
+    });
+
+    const hasErrors = Boolean(nextErrors.invoice_no || nextErrors.supplier_id || nextErrors.lines.some((lineError) => lineError.item_id || lineError.quantity));
+    if (hasErrors) {
+      setFieldErrors(nextErrors);
+      return;
+    }
+
     const valid = lines.filter((l) => l.item_id && l.quantity > 0);
-    if (!invoice_no || !valid.length) { toast.error("invalid"); return; }
     const { data: u } = await supabase.auth.getUser();
     const itemsPayload = valid.map((l) => {
       const lf = Number(l.quantity) * Number(l.price_foreign);
@@ -234,6 +254,19 @@ function InvoiceForm({ suppliers, items, currencies, onDone, editing, onCancelEd
   };
 
   const qc = useQueryClient();
+
+  const updateLine = (index: number, patch: Partial<Line>) => {
+    setLines((current) => {
+      const next = [...current];
+      next[index] = { ...next[index], ...patch };
+      return next;
+    });
+    setFieldErrors((current) => {
+      const nextLines = [...(current.lines ?? [])];
+      nextLines[index] = { ...(nextLines[index] ?? {}), ...(patch.item_id !== undefined ? { item_id: undefined } : {}), ...(patch.quantity !== undefined ? { quantity: undefined } : {}) };
+      return { ...current, lines: nextLines };
+    });
+  };
 
   const handleCurrencyChange = async (v: string) => {
     setCur(v);
@@ -323,7 +356,19 @@ function InvoiceForm({ suppliers, items, currencies, onDone, editing, onCancelEd
       <DialogContent className="w-[calc(100vw-1rem)] max-w-4xl">
         <DialogHeader><DialogTitle>{editing ? t("edit") : t("new_invoice")}</DialogTitle></DialogHeader>
         <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-          <div><Label>{t("invoice_no")}</Label><Input value={invoice_no} onChange={(e) => setNo(e.target.value)} /></div>
+          <div className="space-y-1">
+            <Label>{t("invoice_no")}</Label>
+            <Input
+              value={invoice_no}
+              onChange={(e) => {
+                setNo(e.target.value);
+                if (fieldErrors.invoice_no) setFieldErrors((current) => ({ ...current, invoice_no: undefined }));
+              }}
+              className={cn(fieldErrors.invoice_no && "border-destructive focus-visible:ring-destructive")}
+              aria-invalid={!!fieldErrors.invoice_no}
+            />
+            {fieldErrors.invoice_no && <p className="text-xs text-destructive">{fieldErrors.invoice_no}</p>}
+          </div>
           <div><Label>{t("invoice_date")}</Label><DatePicker value={invoice_date} onValueChange={setDate} /></div>
           <div>
             <Label>{t("supplier")}</Label>
@@ -334,6 +379,7 @@ function InvoiceForm({ suppliers, items, currencies, onDone, editing, onCancelEd
               }
               const id = v === "_" ? null : v;
               setSupplier(id);
+              if (fieldErrors.supplier_id) setFieldErrors((current) => ({ ...current, supplier_id: undefined }));
               if (!id) return;
               const s = suppliers.find((x) => x.id === id);
               if (s) {
@@ -341,13 +387,16 @@ function InvoiceForm({ suppliers, items, currencies, onDone, editing, onCancelEd
                 setPay(s.default_payment_type ?? "cash");
               }
             }}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectTrigger className={cn(fieldErrors.supplier_id && "border-destructive focus:ring-destructive")} aria-invalid={!!fieldErrors.supplier_id}>
+                <SelectValue />
+              </SelectTrigger>
               <SelectContent>
                 <SelectItem value="_">{t("none")}</SelectItem>
                 {suppliers.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
                 <SelectItem value="_add">+ {t("add_supplier")}</SelectItem>
               </SelectContent>
             </Select>
+            {fieldErrors.supplier_id && <p className="text-xs text-destructive">{fieldErrors.supplier_id}</p>}
             <SupplierForm open={showAddSupplier} onOpenChange={setShowAddSupplier} onCreated={(s) => { setSupplier(s.id); if (s.default_currency) void handleCurrencyChange(s.default_currency); setPay(s.default_payment_type ?? "cash"); }} />
           </div>
           <div>
@@ -388,20 +437,32 @@ function InvoiceForm({ suppliers, items, currencies, onDone, editing, onCancelEd
           </div>
           {lines.map((l, idx) => {
             const lt = Number(l.quantity) * Number(l.price_foreign);
+            const rowError = fieldErrors.lines[idx] ?? {};
             return (
               <div key={idx} className="rounded-md border p-3 space-y-3 md:rounded-none md:border-0 md:p-0 md:grid md:grid-cols-12 md:gap-2 md:items-center">
                 <div className="space-y-1 md:col-span-5 md:space-y-0">
                   <Label className="text-xs md:hidden">{t("item")}</Label>
-                  <Select value={l.item_id ?? ""} onValueChange={(v) => { const n = [...lines]; n[idx] = { ...n[idx], item_id: v }; setLines(n); }}>
-                    <SelectTrigger><SelectValue placeholder={t("select")} /></SelectTrigger>
+                  <Select value={l.item_id ?? ""} onValueChange={(v) => updateLine(idx, { item_id: v })}>
+                    <SelectTrigger className={cn(rowError.item_id && "border-destructive focus:ring-destructive")} aria-invalid={!!rowError.item_id}>
+                      <SelectValue placeholder={t("select")} />
+                    </SelectTrigger>
                     <SelectContent>
                       {items.map((it) => <SelectItem key={it.id} value={it.id}>{it.name_ar}{it.code ? ` (${it.code})` : ""}</SelectItem>)}
                     </SelectContent>
                   </Select>
+                  {rowError.item_id && <p className="text-xs text-destructive">{rowError.item_id}</p>}
                 </div>
                 <div className="space-y-1 md:col-span-2 md:space-y-0">
                   <Label className="text-xs md:hidden">{t("quantity")}</Label>
-                  <Input type="number" step="0.01" value={l.quantity} onChange={(e) => { const n = [...lines]; n[idx] = { ...n[idx], quantity: Number(e.target.value) }; setLines(n); }} />
+                  <Input
+                    type="number"
+                    step="0.01"
+                    value={l.quantity}
+                    onChange={(e) => updateLine(idx, { quantity: Number(e.target.value) })}
+                    className={cn(rowError.quantity && "border-destructive focus-visible:ring-destructive")}
+                    aria-invalid={!!rowError.quantity}
+                  />
+                  {rowError.quantity && <p className="text-xs text-destructive">{rowError.quantity}</p>}
                 </div>
                 <div className="space-y-1 md:col-span-2 md:space-y-0">
                   <Label className="text-xs md:hidden">{isForeign ? t("price_foreign") : t("price_local")}</Label>
