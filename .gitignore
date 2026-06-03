@@ -16,6 +16,8 @@ dist-ssr
 .nitro
 *.local
 
+previous_chat.md
+
 # Wrangler / Cloudflare
 .wrangler/
 .dev.vars
