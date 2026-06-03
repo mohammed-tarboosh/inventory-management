@@ -5,45 +5,18 @@ import type { Database } from "../../integrations/supabase/types";
 import { getServerConfig } from "../config.server";
 import { resolveAuthEmail } from "../auth";
 
-/**
- * إنشاء عميل Supabase بصلاحية Service Role (Admin)
- * ⚠️ هذا يتجاوز RLS بالكامل لذلك يجب استخدامه فقط في السيرفر
- */
 function getAdminSupabase() {
   const config = getServerConfig();
-  const serviceRole =
-    config.supabaseServiceRole ?? process.env.SUPABASE_SERVICE_ROLE;
-
+  const serviceRole = config.supabaseServiceRole ?? process.env.SUPABASE_SERVICE_ROLE;
   const SUPABASE_URL = process.env.SUPABASE_URL;
-
-  if (!serviceRole)
-    throw new Error("Missing SUPABASE_SERVICE_ROLE in server environment");
-
-  if (!SUPABASE_URL)
-    throw new Error("Missing SUPABASE_URL in server environment");
+  if (!serviceRole) throw new Error("Missing SUPABASE_SERVICE_ROLE in server environment");
+  if (!SUPABASE_URL) throw new Error("Missing SUPABASE_URL in server environment");
 
   return createClient<Database>(SUPABASE_URL, serviceRole, {
-    auth: {
-      storage: undefined,
-      persistSession: false,
-      autoRefreshToken: false,
-    },
+    auth: { storage: undefined, persistSession: false, autoRefreshToken: false },
   });
 }
 
-/**
- * =========================
- * CREATE USER (NEW VERSION)
- * =========================
- *
- * الفكرة:
- * - إنشاء المستخدم في auth.users
- * - trigger (handle_new_user) ينشئ profile تلقائياً
- * - لا نقوم بأي UPDATE على profiles هنا لتجنب:
- *   ❌ duplicate audit logs
- *   ❌ updated_at noise
- *   ❌ UPDATE غير ضروري
- */
 export const createUser = createServerFn({ method: "POST" })
   .inputValidator(
     z.object({
@@ -56,95 +29,54 @@ export const createUser = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     const client = getAdminSupabase();
-
-    // تحويل username إلى email إذا لم يتم إدخال email صريح
-    const resolvedEmail =
-      data.email ?? resolveAuthEmail(data.username).email;
+    const resolvedEmail = data.email ?? resolveAuthEmail(data.username).email;
 
     if (!resolvedEmail) {
       throw new Error("Email is required for creating a user");
     }
 
-    /**
-     * 1) التأكد أن username غير مكرر
-     */
     const { data: existingProfile, error: existingError } = await client
       .from("profiles")
       .select("id")
       .eq("username", data.username)
       .maybeSingle();
-
     if (existingError) throw existingError;
     if (existingProfile) throw new Error("Username already exists");
 
-    /**
-     * 2) إنشاء المستخدم في Supabase Auth
-     * ⬇️ هذا سيشغل trigger:
-     *    handle_new_user()
-     *    → INSERT INTO profiles
-     */
-    const { data: created, error: createError } =
-      await client.auth.admin.createUser({
-        email: resolvedEmail,
-        password: data.password,
-        email_confirm: true,
-        user_metadata: {
-          username: data.username,
-          full_name: data.full_name ?? data.username,
-        },
-      });
-
+    const { data: created, error: createError } = await client.auth.admin.createUser({
+      email: resolvedEmail,
+      password: data.password,
+      email_confirm: true,
+      user_metadata: {
+        username: data.username,
+        full_name: data.full_name ?? data.username,
+      },
+    });
     if (createError) throw createError;
-    if (!created.user?.id)
-      throw new Error("Missing user id from Supabase");
+    if (!created.user?.id) throw new Error("Failed to create user: missing id in Supabase response");
 
     const userId = created.user.id;
 
-    /**
-     * ❌ IMPORTANT CHANGE:
-     * تم حذف هذا بالكامل:
-     *
-     * await client.from("profiles").update(...)
-     *
-     * السبب:
-     * - handle_new_user ينشئ profile أصلاً
-     * - هذا التحديث كان يسبب:
-     *   → UPDATE إضافي
-     *   → audit log غير ضروري
-     *   → updated_at noise
-     */
+    const profileUpdate = await client
+      .from("profiles")
+      .update({
+        username: data.username,
+        full_name: data.full_name ?? null,
+        is_active: data.is_active ?? true,
+      })
+      .eq("id", userId)
+      .select()
+      .maybeSingle();
+    if (profileUpdate.error) throw profileUpdate.error;
 
-    /**
-     * 3) تفعيل/حظر المستخدم (اختياري)
-     */
-    if (data.is_active === false) {
-      const { error: banError } =
-        await client.auth.admin.updateUserById(userId, {
-          ban_duration: "876000h",
-        });
-
+    if (typeof data.is_active === "boolean" && data.is_active === false) {
+      const { error: banError } = await client.auth.admin.updateUserById(userId, { ban_duration: "876000h" });
       if (banError) throw banError;
     }
 
-    return {
-      user: {
-        id: userId,
-        email: resolvedEmail,
-        username: data.username,
-        full_name: data.full_name ?? null,
-      },
-    };
+    return { user: { id: userId, email: resolvedEmail, username: data.username, full_name: data.full_name ?? null } };
   });
 
-/**
- * =========================
- * UPDATE USER
- * =========================
- *
- * هنا التحديث منطقي لأنه:
- * - تعديل بيانات مستخدم موجود
- * - وبالتالي audit logs مفيدة
- */
 export const updateUser = createServerFn({ method: "POST" })
   .inputValidator(
     z.object({
@@ -159,116 +91,66 @@ export const updateUser = createServerFn({ method: "POST" })
     const client = getAdminSupabase();
     const { userId, username, full_name, email, is_active } = data;
 
-    /**
-     * 1) تحديث auth.users (email / metadata / ban status)
-     */
     const updatePayload: Record<string, unknown> = {};
-
     if (email) updatePayload.email = email;
-
     const userMetadata: Record<string, unknown> = {};
-
     if (username) userMetadata.username = username;
     if (full_name !== undefined) userMetadata.full_name = full_name;
-
-    if (Object.keys(userMetadata).length) {
-      updatePayload.user_metadata = userMetadata;
-    }
-
-    if (typeof is_active === "boolean") {
-      updatePayload.ban_duration = is_active ? "none" : "876000h";
-    }
+    if (Object.keys(userMetadata).length) updatePayload.user_metadata = userMetadata;
+    if (typeof is_active === "boolean") updatePayload.ban_duration = is_active ? "none" : "876000h";
 
     if (Object.keys(updatePayload).length) {
-      const { error } = await client.auth.admin.updateUserById(
-        userId,
-        updatePayload as any
-      );
-      if (error) throw error;
+      const { error: updateError } = await client.auth.admin.updateUserById(userId, updatePayload as Parameters<typeof client.auth.admin.updateUserById>[1]);
+      if (updateError) throw updateError;
     }
 
-    /**
-     * 2) تحديث profile (هذا هو المكان الوحيد الآن)
-     * ⬇️ هذا التحديث هو الذي يولد audit UPDATE
-     */
     const profileUpdate: any = {};
-
     if (username) profileUpdate.username = username;
     if (full_name !== undefined) profileUpdate.full_name = full_name;
     if (typeof is_active === "boolean") profileUpdate.is_active = is_active;
-
     if (Object.keys(profileUpdate).length) {
-      const { data, error } = await client
-        .from("profiles")
-        .update(profileUpdate)
-        .eq("id", userId)
-        .select()
-        .maybeSingle();
-
-      if (error) throw error;
-
-      return { profile: data };
+      const up = await client.from("profiles").update(profileUpdate).eq("id", userId).select().maybeSingle();
+      if (up.error) throw up.error;
+      return { profile: up.data };
     }
 
     return { ok: true };
   });
 
-/**
- * =========================
- * DELETE USER
- * =========================
- */
 export const deleteUser = createServerFn({ method: "POST" })
   .inputValidator(z.object({ userId: z.string().min(1) }))
   .handler(async ({ data }) => {
     const client = getAdminSupabase();
     const { userId } = data;
 
-    // حذف الصلاحيات أولاً
-    const perms = await client
-      .from("user_permissions")
-      .delete()
-      .eq("user_id", userId);
-
+    // Remove permission-related rows first
+    const perms = await client.from("user_permissions").delete().eq("user_id", userId);
     if (perms.error) throw perms.error;
 
-    // حذف profile
-    const prof = await client
-      .from("profiles")
-      .delete()
-      .eq("id", userId);
-
+    // Remove profile row
+    const prof = await client.from("profiles").delete().eq("id", userId);
     if (prof.error) throw prof.error;
 
-    // حذف المستخدم من auth
-    const { error } = await client.auth.admin.deleteUser(userId);
-    if (error) throw error;
+    const { error: deleteError } = await client.auth.admin.deleteUser(userId);
+    if (deleteError) throw deleteError;
 
     return { ok: true };
   });
 
-/**
- * =========================
- * RESET PASSWORD
- * =========================
- */
 export const adminResetPassword = createServerFn({ method: "POST" })
   .inputValidator(z.object({ userId: z.string().min(1) }))
   .handler(async ({ data }) => {
     const client = getAdminSupabase();
     const { userId } = data;
 
-    const { data: userResult, error } =
-      await client.auth.admin.getUserById(userId);
-
-    if (error) throw error;
+    const { data: userResult, error: userError } = await client.auth.admin.getUserById(userId);
+    if (userError) throw userError;
 
     const email = userResult.user?.email;
-    if (!email) throw new Error("User has no email");
+    if (!email) throw new Error("User has no email to send reset to");
 
-    const { error: resetError } =
-      await client.auth.resetPasswordForEmail(email);
-
+    // Trigger password recovery email
+    const { error: resetError } = await client.auth.resetPasswordForEmail(email);
     if (resetError) throw resetError;
 
     return { ok: true };
