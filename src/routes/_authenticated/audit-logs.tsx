@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { PageHeader } from "@/components/PageHeader";
@@ -12,7 +12,50 @@ import { fmtDateTime } from "@/lib/format";
 import { usePermissions } from "@/lib/permissions";
 import { useMemo, useState } from "react";
 
-export const Route = createFileRoute("/_authenticated/audit-logs")({ component: Page });
+async function hasAdminAccess() {
+  if (typeof window === "undefined") return false;
+
+  const { data } = await supabase.auth.getUser();
+  const userId = data.user?.id;
+  if (!userId) return false;
+
+  const permissions = new Set<string>();
+
+  const { data: direct } = await supabase
+    .from("user_permissions")
+    .select("permission_key")
+    .eq("user_id", userId);
+  direct?.forEach((row: any) => permissions.add(row.permission_key));
+
+  const { data: groupLinks } = await supabase
+    .from("user_permission_groups")
+    .select("group_id")
+    .eq("user_id", userId);
+  const groupIds = (groupLinks ?? []).map((row: any) => row.group_id);
+  if (groupIds.length) {
+    const { data: groupPerms } = await supabase
+      .from("permission_group_items")
+      .select("permission_key")
+      .in("group_id", groupIds);
+    groupPerms?.forEach((row: any) => permissions.add(row.permission_key));
+  }
+
+  return permissions.has("system.admin");
+}
+
+export const Route = createFileRoute("/_authenticated/audit-logs")({
+  beforeLoad: async () => {
+    if (typeof window === "undefined") {
+      throw redirect({ to: "/login" });
+    }
+
+    const allowed = await hasAdminAccess();
+    if (!allowed) {
+      throw redirect({ to: "/dashboard" });
+    }
+  },
+  component: Page,
+});
 
 function Page() {
   const { t } = useI18n();
@@ -217,7 +260,7 @@ function Page() {
               // For updates: show per-field previous/new pairs
               if (r.action === "update" && r.changeSummary?.length) {
                 return (
-                  <div className="space-y-2 max-w-[32rem]">
+                  <div className="space-y-2 max-w-lg">
                     {r.changeSummary.map((c: any) => (
                       <div key={c.field} className="rounded border bg-background px-2 py-1 text-xs space-y-1">
                         <div className="font-medium">{c.field}</div>
@@ -240,14 +283,14 @@ function Page() {
               // For inserts: show the inserted object
               if (r.action === "insert" && r.rawAfter && Object.keys(r.rawAfter).length) {
                 return (
-                  <pre className="rounded border bg-background p-2 text-xs overflow-auto max-w-[40rem]">{JSON.stringify(r.rawAfter, null, 2)}</pre>
+                  <pre className="rounded border bg-background p-2 text-xs overflow-auto max-w-160">{JSON.stringify(r.rawAfter, null, 2)}</pre>
                 );
               }
 
               // For deletes: show the removed object
               if (r.action === "delete" && r.rawBefore && Object.keys(r.rawBefore).length) {
                 return (
-                  <pre className="rounded border bg-background p-2 text-xs overflow-auto max-w-[40rem]">{JSON.stringify(r.rawBefore, null, 2)}</pre>
+                  <pre className="rounded border bg-background p-2 text-xs overflow-auto max-w-160">{JSON.stringify(r.rawBefore, null, 2)}</pre>
                 );
               }
 

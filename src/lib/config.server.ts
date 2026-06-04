@@ -19,7 +19,9 @@ import process from "node:process";
 export function getServerConfig() {
   return {
     nodeEnv: process.env.NODE_ENV,
-    supabaseServiceRole: process.env.SUPABASE_SERVICE_ROLE,
+    // Prefer the explicit `SUPABASE_SERVICE_ROLE_KEY`. Fall back to
+    // `SUPABASE_SERVICE_ROLE` for backward compatibility.
+    supabaseServiceRole: process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.SUPABASE_SERVICE_ROLE,
     // Add server-only values here, e.g.:
     //   databaseUrl: process.env.DATABASE_URL,
     //   stripeSecretKey: process.env.STRIPE_SECRET_KEY,

@@ -37,9 +37,8 @@ console.log(result.greeting); // "Hello, Ada!"
 ## المصادقة والـ middleware
 
 - `auth-attacher` — يضيف Authorization header المستخرج من جلسة العميل إلى طلبات server functions التي تُجرى نيابة عن المستخدم.
-- `auth-middleware` — يُستخدم على مستوى الخادم للتحقق من Bearer token، ويُرفق معلومات `userId` وعميل Supabase server إلى السياق.
 
-راجع: `src/start.ts`, `src/integrations/supabase/auth-attacher.ts`, `src/integrations/supabase/auth-middleware.ts`.
+Note: The legacy `auth-middleware` file was removed from the codebase; server functions rely on `auth-attacher` for attaching user tokens and use `supabaseAdmin` or server-side logic for admin operations. See `src/start.ts` and `src/integrations/supabase/auth-attacher.ts` for registration details.
 
 ## إضافة دالة خادم جديدة
 

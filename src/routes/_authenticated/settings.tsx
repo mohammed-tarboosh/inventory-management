@@ -103,7 +103,14 @@ function CurrencyForm({ onDone, editing, onCancelEdit }: { onDone: () => void; e
       <DialogContent>
         <DialogHeader><DialogTitle>{editing ? t("edit") : t("currencies")}</DialogTitle></DialogHeader>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <div><Label>{t("code")}</Label><Input value={code} onChange={(e) => setCode(e.target.value)} /></div>
+          <div>
+            <Label>{t("code")}</Label>
+            {editing ? (
+              <Input value={code} disabled />
+            ) : (
+              <Input value={code} onChange={(e) => setCode(e.target.value)} />
+            )}
+          </div>
           <div><Label>Symbol</Label><Input value={sym} onChange={(e) => setSym(e.target.value)} /></div>
           <div><Label>{t("name_ar")}</Label><Input value={ar} onChange={(e) => setAr(e.target.value)} /></div>
           <div><Label>{t("name_en")}</Label><Input value={en} onChange={(e) => setEn(e.target.value)} /></div>

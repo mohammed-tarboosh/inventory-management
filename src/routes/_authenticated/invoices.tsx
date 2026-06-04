@@ -93,7 +93,7 @@ function Page() {
   );
 }
 
-type Line = { item_id: string | null; quantity: number; price_foreign: number };
+type Line = { item_id: string | null; quantity: number; price_foreign: number; _uid?: string };
 type LineError = { item_id?: string; quantity?: string };
 
 function InvoiceForm({ suppliers, items, currencies, onDone, editing, onCancelEdit }: { suppliers: any[]; items: any[]; currencies: any[]; onDone: () => void; editing?: any | null; onCancelEdit?: () => void }) {
@@ -107,7 +107,8 @@ function InvoiceForm({ suppliers, items, currencies, onDone, editing, onCancelEd
   const [currency_code, setCur] = useState(baseCur);
   const [exchange_rate, setRate] = useState<number>(1);
   const [notes, setNotes] = useState("");
-  const [lines, setLines] = useState<Line[]>([{ item_id: null, quantity: 1, price_foreign: 0 }]);
+  const genUid = () => `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  const [lines, setLines] = useState<Line[]>([{ item_id: null, quantity: 1, price_foreign: 0, _uid: genUid() }]);
   const [fieldErrors, setFieldErrors] = useState<{ invoice_no?: string; supplier_id?: string; lines: LineError[] }>({ lines: [{}] });
   const [showAddSupplier, setShowAddSupplier] = useState(false);
 
@@ -121,7 +122,7 @@ function InvoiceForm({ suppliers, items, currencies, onDone, editing, onCancelEd
     setCur(baseCur);
     setRate(1);
     setNotes("");
-    setLines([{ item_id: null, quantity: 1, price_foreign: 0 }]);
+    setLines([{ item_id: null, quantity: 1, price_foreign: 0, _uid: genUid() }]);
     setFieldErrors({ lines: [{}] });
   };
 
@@ -147,12 +148,12 @@ function InvoiceForm({ suppliers, items, currencies, onDone, editing, onCancelEd
         .order("created_at", { ascending: true });
       if (error) {
         toast.error(error.message);
-        setLines([{ item_id: null, quantity: 1, price_foreign: 0 }]);
+        setLines([{ item_id: null, quantity: 1, price_foreign: 0, _uid: genUid() }]);
         return;
       }
       setLines((existingLines?.length ?? 0) > 0
-        ? existingLines!.map((l: any) => ({ item_id: l.item_id, quantity: Number(l.quantity), price_foreign: Number(l.price_foreign) }))
-        : [{ item_id: null, quantity: 1, price_foreign: 0 }]);
+        ? existingLines!.map((l: any) => ({ item_id: l.item_id, quantity: Number(l.quantity), price_foreign: Number(l.price_foreign), _uid: l.id ?? genUid() }))
+        : [{ item_id: null, quantity: 1, price_foreign: 0, _uid: genUid() }]);
     };
 
     void load();
@@ -424,7 +425,7 @@ function InvoiceForm({ suppliers, items, currencies, onDone, editing, onCancelEd
         <div className="border rounded-md p-3 space-y-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <strong>{t("add_item")}</strong>
-            <Button size="sm" variant="outline" onClick={() => setLines([...lines, { item_id: null, quantity: 1, price_foreign: 0 }])}>
+            <Button size="sm" variant="outline" onClick={() => setLines([...lines, { item_id: null, quantity: 1, price_foreign: 0, _uid: genUid() }])}>
               <Plus className="h-4 w-4 me-1" />{t("add")}
             </Button>
           </div>
@@ -439,7 +440,7 @@ function InvoiceForm({ suppliers, items, currencies, onDone, editing, onCancelEd
             const lt = Number(l.quantity) * Number(l.price_foreign);
             const rowError = fieldErrors.lines[idx] ?? {};
             return (
-              <div key={idx} className="rounded-md border p-3 space-y-3 md:rounded-none md:border-0 md:p-0 md:grid md:grid-cols-12 md:gap-2 md:items-center">
+              <div key={l._uid ?? idx} className="rounded-md border p-3 space-y-3 md:rounded-none md:border-0 md:p-0 md:grid md:grid-cols-12 md:gap-2 md:items-center">
                 <div className="space-y-1 md:col-span-5 md:space-y-0">
                   <Label className="text-xs md:hidden">{t("item")}</Label>
                   <Select value={l.item_id ?? ""} onValueChange={(v) => updateLine(idx, { item_id: v })}>

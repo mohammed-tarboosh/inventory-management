@@ -20,7 +20,7 @@ export function DataTable<T>({ rows, columns, empty }: { rows: T[]; columns: Col
         </div>
       ) : (
         rows.map((r, idx) => (
-          <div key={idx} className="rounded-md border bg-card p-3 shadow-sm">
+          <div key={(r as any).id ?? idx} className="rounded-md border bg-card p-3 shadow-sm">
             <div className="space-y-2">
               {columns.map((c) => (
                 <div key={c.key} className="flex items-start justify-between gap-3 border-t pt-2 first:border-t-0 first:pt-0">
@@ -56,7 +56,7 @@ export function DataTable<T>({ rows, columns, empty }: { rows: T[]; columns: Col
               </TableRow>
             ) : (
               rows.map((r, i) => (
-                <TableRow key={i}>
+                <TableRow key={(r as any).id ?? i}>
                   {columns.map((c) => (
                     <TableCell key={c.key} className={c.className}>{c.cell(r)}</TableCell>
                   ))}

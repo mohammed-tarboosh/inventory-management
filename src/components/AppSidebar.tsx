@@ -43,7 +43,7 @@ export function AppSidebar() {
     { to: "/movements", icon: Activity, label: t("movements"), perm: "items.view" },
     { to: "/debts", icon: Wallet, label: t("debts"), perm: "debts.view" },
     { to: "/reports", icon: BarChart3, label: t("reports"), perm: "reports.view" },
-    { to: "/audit-logs", icon: ClipboardList, label: t("audit_logs"), perm: "reports.view" },
+    { to: "/audit-logs", icon: ClipboardList, label: t("audit_logs"), perm: "system.admin" },
     { to: "/users", icon: Shield, label: t("users"), perm: "users.manage" },
     { to: "/settings", icon: Settings, label: t("settings"), perm: "settings.view" },
   ];

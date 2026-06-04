@@ -754,14 +754,17 @@ export type Database = {
       }
       user_permission_groups: {
         Row: {
+          created_by: string | null
           group_id: string
           user_id: string
         }
         Insert: {
+          created_by?: string | null
           group_id: string
           user_id: string
         }
         Update: {
+          created_by?: string | null
           group_id?: string
           user_id?: string
         }
@@ -784,14 +787,17 @@ export type Database = {
       }
       user_permissions: {
         Row: {
+          created_by: string | null
           permission_key: string
           user_id: string
         }
         Insert: {
+          created_by?: string | null
           permission_key: string
           user_id: string
         }
         Update: {
+          created_by?: string | null
           permission_key?: string
           user_id?: string
         }

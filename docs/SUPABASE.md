@@ -12,8 +12,8 @@
 
 - `client.ts` — عميل Supabase للعميل (publishable key). يستخدم متغيرات `VITE_SUPABASE_*`.
 - `client.server.ts` — عميل server/admin يستخدم `SUPABASE_SERVICE_ROLE_KEY` للعمليات الموثوقة.
-- `auth-attacher.ts` — ميدلوير يضيف Authorization header لنداءات السيرفر استناداً إلى جلسة المستخدم.
-- `auth-middleware.ts` — ميدلوير للتحقق من توكن Bearer في استدعاءات الخادم.
+ - `auth-attacher.ts` — ميدلوير يضيف Authorization header لنداءات السيرفر استناداً إلى جلسة المستخدم.
+ - Note: `auth-middleware.ts` was removed from the codebase; token validation for server-side flows is handled via server functions and `supabaseAdmin` where needed.
 - `types.ts` — أنماط الجداول المولدة (generated) من schema.
 
 ملاحظات أمان:
@@ -31,6 +31,7 @@ RLS وPolicies:
 
 - يحتوي المجلد `supabase/migrations/` على سياسات RLS لتقييد الوصول إلى الجداول حسب المستخدم/الصلاحيات.
 - راجع `DB_MIGRATIONS.md` لمخطط الجداول والأهداف.
+- سجل المراجعة `audit_logs` مقصور على مستخدمي `system.admin` فقط، والصفحة `/audit-logs` مخفية ومحمية بنفس الصلاحية.
 
 ملاحظة تشغيل محلي:
 

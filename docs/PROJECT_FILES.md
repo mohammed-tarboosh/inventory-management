@@ -13,6 +13,10 @@
 5. العمليات الإدارية والخاصة بالخادم تمر عبر server functions في `src/lib/api/*` أو عبر الكود الخادم في `src/server.ts` و`src/start.ts`.
 6. التنسيق، الترجمة، الصلاحيات، والتصدير إلى PDF/Excel تتم عبر ملفات `src/lib/*` والمكونات المشتركة في `src/components/*`.
 
+Package manager:
+
+- This project now standardizes on **npm**. Run `npm install` to install dependencies and `npm run dev` to start the dev server. Bun lock/config files were removed from the repo.
+
 ## ملفات الجذر
 
 | الملف | ماذا يفعل | كيف يعمل |
@@ -168,7 +172,7 @@
 | `src/integrations/supabase/client.ts` | عميل Supabase للواجهة والـ SSR | يقرأ `VITE_SUPABASE_URL` و`VITE_SUPABASE_PUBLISHABLE_KEY` أو بدائلهما من البيئة، ثم ينشئ client يدعم الجلسة المحلية |
 | `src/integrations/supabase/client.server.ts` | عميل Supabase الإداري | يستخدم `SUPABASE_SERVICE_ROLE_KEY` للوصول الموثوق على الخادم مع تعطيل session persistence |
 | `src/integrations/supabase/auth-attacher.ts` | ميدلوير مصادقة للـ server functions | يضيف Authorization header من جلسة المستخدم إلى الطلبات التي تحتاج هوية المستخدم |
-| `src/integrations/supabase/auth-middleware.ts` | ميدلوير تحقق خادم | يتحقق من التوكن ويهيئ سياق الخادم عند الحاجة |
+| Note: `src/integrations/supabase/auth-middleware.ts` was removed as part of cleanup — token attachment is done via `auth-attacher`, and server/admin operations use `supabaseAdmin` in `src/integrations/supabase/client.server.ts`. |
 | `src/integrations/supabase/types.ts` | أنواع قاعدة البيانات | ملف مولد يصف الجداول والأنواع، ويجب عدم تعديله يدويًا |
 
 ## مكتبة المنطق والوظائف

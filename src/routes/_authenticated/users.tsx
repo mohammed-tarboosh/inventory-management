@@ -54,7 +54,8 @@ function Page() {
                 <UserDialog profile={r} trigger={<Button variant="ghost" size="icon">✎</Button>} onDone={refetch} />
                 <ConfirmDelete trigger={<Button variant="ghost" size="icon" className="text-destructive">🗑</Button>} onConfirm={async () => {
                   try {
-                    await deleteUser({ data: { userId: r.id } });
+                    const { data: authUser } = await supabase.auth.getUser();
+                    await deleteUser({ data: { userId: r.id, actorId: authUser.user?.id ?? undefined } });
                     toast.success(t("delete_success"));
                     refetch();
                   } catch (err: any) { toast.error(err?.message || String(err)); }
@@ -90,16 +91,43 @@ function PermDialog({ profile, permissions, groups, userGroups, userPerms, onDon
   }, [open, profile.id, userGroups, userPerms]);
 
   const save = async () => {
-    await supabase.from("user_permission_groups").delete().eq("user_id", profile.id);
-    await supabase.from("user_permissions").delete().eq("user_id", profile.id);
-    if (selectedGroups.size) {
-      const { error } = await supabase.from("user_permission_groups").insert(Array.from(selectedGroups).map((g) => ({ user_id: profile.id, group_id: g })));
+    // Compute diffs instead of wiping all rows: safer for partial failures.
+    const existingGroupIds = new Set((userGroups as any[]).filter((g) => g.user_id === profile.id).map((g) => g.group_id));
+    const existingPermKeys = new Set((userPerms as any[]).filter((p) => p.user_id === profile.id).map((p) => p.permission_key));
+
+    const groupsToInsert = Array.from(selectedGroups).filter((g) => !existingGroupIds.has(g));
+    const groupsToDelete = Array.from(existingGroupIds).filter((g: any) => !selectedGroups.has(g));
+
+    const permsToInsert = Array.from(selectedPerms).filter((p) => !existingPermKeys.has(p));
+    const permsToDelete = Array.from(existingPermKeys).filter((p: any) => !selectedPerms.has(p));
+
+    // Execute deletions first (idempotent), then inserts. Handle errors explicitly.
+    if (groupsToDelete.length) {
+      const { error } = await supabase.from("user_permission_groups").delete().in("group_id", groupsToDelete).eq("user_id", profile.id);
       if (error) { toast.error(error.message); return; }
     }
-    if (selectedPerms.size) {
-      const { error } = await supabase.from("user_permissions").insert(Array.from(selectedPerms).map((p) => ({ user_id: profile.id, permission_key: p })));
+
+    if (permsToDelete.length) {
+      const { error } = await supabase.from("user_permissions").delete().in("permission_key", permsToDelete).eq("user_id", profile.id);
       if (error) { toast.error(error.message); return; }
     }
+
+    if (groupsToInsert.length) {
+      const { data: authUser } = await supabase.auth.getUser();
+      const actorId = authUser?.user?.id ?? null;
+      const payload = groupsToInsert.map((g) => ({ user_id: profile.id, group_id: g, created_by: actorId }));
+      const { error } = await supabase.from("user_permission_groups").insert(payload);
+      if (error) { toast.error(error.message); return; }
+    }
+
+    if (permsToInsert.length) {
+      const { data: authUser2 } = await supabase.auth.getUser();
+      const actorId2 = authUser2?.user?.id ?? null;
+      const payload = permsToInsert.map((p) => ({ user_id: profile.id, permission_key: p, created_by: actorId2 }));
+      const { error } = await supabase.from("user_permissions").insert(payload);
+      if (error) { toast.error(error.message); return; }
+    }
+
     toast.success(t("save_success"));
     setOpen(false); onDone();
   };
@@ -182,11 +210,13 @@ function UserDialog({ profile, trigger, onDone }: any) {
   const save = async () => {
     setLoading(true);
     try {
+      const { data: authUser } = await supabase.auth.getUser();
+      const actorId = authUser.user?.id ?? undefined;
       if (isEdit) {
-        await updateUser({ data: { userId: profile.id, username, full_name: fullName, email, is_active: isActive } });
+        await updateUser({ data: { userId: profile.id, actorId, username, full_name: fullName, email, is_active: isActive } });
         toast.success(t("save_success"));
       } else {
-        await createUser({ data: { username, full_name: fullName, email, password, is_active: isActive } });
+        await createUser({ data: { actorId, username, full_name: fullName, email, password, is_active: isActive } });
         toast.success(t("save_success"));
       }
       setOpen(false);
