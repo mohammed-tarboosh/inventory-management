@@ -7,8 +7,7 @@ import type { Database } from "@/integrations/supabase/types";
 type ProfileRow = Database["public"]["Tables"]["profiles"]["Row"];
 type UserPermissionRow = Database["public"]["Tables"]["user_permissions"]["Row"];
 type UserPermissionGroupRow = Database["public"]["Tables"]["user_permission_groups"]["Row"];
-type PermissionGroupItemRow = { permission_key: string };
-
+type PermissionGroupItemRow = Database["public"]["Tables"]["permission_group_items"]["Row"];
 type CurrentUserResult = {
   id: string;
   email: string | null;
@@ -31,6 +30,65 @@ export function useCurrentUser() {
   });
 }
 
+export function buildEffectivePermissions(
+  userPerms: string[],
+  userGroups: string[],
+  groupItems: PermissionGroupItemRow[],
+) {
+  const result = new Set<string>(userPerms);
+  const itemsByGroup = new Map<string, string[]>();
+  for (const item of groupItems) {
+    itemsByGroup.set(item.group_id, [...(itemsByGroup.get(item.group_id) ?? []), item.permission_key]);
+  }
+  for (const groupId of userGroups) {
+    const permissions = itemsByGroup.get(groupId) ?? [];
+    permissions.forEach((perm) => result.add(perm));
+  }
+  return Array.from(result);
+}
+
+export async function loadEffectivePermissions(userId: string) {
+  const { data: direct } = await supabase
+    .from("user_permissions")
+    .select("permission_key")
+    .eq("user_id", userId);
+
+  const { data: ug } = await supabase
+    .from("user_permission_groups")
+    .select("group_id")
+    .eq("user_id", userId);
+
+  const groupIds = (ug ?? []).map((g: { group_id: string }) => g.group_id);
+  const groupItems = groupIds.length
+    ? (await supabase
+        .from("permission_group_items")
+        .select("group_id,permission_key")
+        .in("group_id", groupIds)).data ?? []
+    : [];
+
+  return buildEffectivePermissions(
+    (direct ?? []).map((r) => r.permission_key),
+    groupIds,
+    groupItems,
+  );
+}
+
+export async function loadCurrentUserPermissions() {
+  const { data } = await supabase.auth.getUser();
+  if (!data.user) return [];
+  return loadEffectivePermissions(data.user.id);
+}
+
+export async function userHasPermission(permission: string) {
+  const permissions = await loadCurrentUserPermissions();
+  return permissions.includes(permission) || permissions.includes("system.admin");
+}
+
+export async function userHasAnyPermission(keys: string[]) {
+  const permissions = await loadCurrentUserPermissions();
+  return permissions.includes("system.admin") || keys.some((key) => permissions.includes(key));
+}
+
 export function usePermissions() {
   const [userId, setUserId] = useState<string | null>(null);
   useEffect(() => {
@@ -43,30 +101,12 @@ export function usePermissions() {
     return () => subscription.unsubscribe();
   }, []);
 
-  const query = useQuery({
+  const query = useQuery<string[]>({
     queryKey: ["permissions", userId],
     enabled: !!userId,
     queryFn: async () => {
       if (!userId) return [];
-      const set = new Set<string>();
-      const { data: direct } = await supabase
-        .from("user_permissions")
-        .select("permission_key")
-        .eq("user_id", userId);
-      direct?.forEach((r) => set.add(r.permission_key));
-      const { data: ug } = await supabase
-        .from("user_permission_groups")
-        .select("group_id")
-        .eq("user_id", userId);
-      const groupIds = (ug ?? []).map((g) => g.group_id);
-      if (groupIds.length) {
-        const { data: gp } = await supabase
-          .from("permission_group_items")
-          .select("permission_key")
-          .in("group_id", groupIds);
-        gp?.forEach((r) => set.add(r.permission_key));
-      }
-      return Array.from(set);
+      return loadEffectivePermissions(userId);
     },
   });
 

@@ -58,7 +58,7 @@ function LoginPage() {
               onChange={(e) => setUsername(e.target.value)}
               required
               autoFocus
-              pattern="[a-zA-Z0-9_.\\-]+"
+              pattern="[a-zA-Z0-9_.-]+"
             />
           </div>
           <div>

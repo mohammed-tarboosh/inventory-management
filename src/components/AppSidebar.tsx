@@ -44,7 +44,19 @@ export function AppSidebar() {
     { to: "/debts", icon: Wallet, label: t("debts"), perm: "debts.view" },
     { to: "/reports", icon: BarChart3, label: t("reports"), perm: "reports.view" },
     { to: "/audit-logs", icon: ClipboardList, label: t("audit_logs"), perm: "system.admin" },
-    { to: "/users", icon: Shield, label: t("users"), perm: "users.manage" },
+    {
+      to: "/users",
+      icon: Shield,
+      label: t("users"),
+      perm: "users.manage",
+      altPerm: "permissions.manage",
+    },
+    {
+      to: "/permission-groups",
+      icon: Shield,
+      label: t("permission_groups"),
+      perm: "permissions.manage",
+    },
     { to: "/settings", icon: Settings, label: t("settings"), perm: "settings.view" },
   ];
 
@@ -56,7 +68,7 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               {items
-                .filter((i) => !i.perm || can(i.perm))
+                .filter((i) => !i.perm || can(i.perm) || (i.altPerm ? can(i.altPerm) : false))
                 .map((i) => (
                   <SidebarMenuItem key={i.to}>
                     <SidebarMenuButton

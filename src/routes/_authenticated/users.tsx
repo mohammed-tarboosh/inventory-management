@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { PageHeader } from "@/components/PageHeader";
@@ -17,13 +17,21 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ConfirmDelete } from "@/components/ConfirmDelete";
 import { useI18n } from "@/lib/i18n";
-import { usePermissions } from "@/lib/permissions";
+import { buildEffectivePermissions, usePermissions, userHasAnyPermission } from "@/lib/permissions";
 import { ShieldCheck } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { createUser, updateUser, deleteUser, adminResetPassword } from "@/lib/api/users.functions";
 
-export const Route = createFileRoute("/_authenticated/users")({ component: Page });
+export const Route = createFileRoute("/_authenticated/users")({
+  beforeLoad: async () => {
+    const { data } = await supabase.auth.getUser();
+    if (!data.user) throw redirect({ to: "/login" });
+    const allowed = await userHasAnyPermission(["users.manage", "permissions.manage"]);
+    if (!allowed) throw redirect({ to: "/dashboard" });
+  },
+  component: Page,
+});
 
 function Page() {
   const { t, locale } = useI18n();
@@ -51,6 +59,47 @@ function Page() {
     queryKey: ["up_all"],
     queryFn: async () => (await supabase.from("user_permissions").select("*")).data ?? [],
   });
+  const { data: permissionGroupItems = [] } = useQuery({
+    queryKey: ["permission_group_items"],
+    queryFn: async () =>
+      (await supabase.from("permission_group_items").select("*")).data ?? [],
+  });
+
+  const permissionLabels = useMemo(
+    () =>
+      new Map(
+        (permissions as any[]).map((p) => [p.key, locale === "ar" ? p.label_ar : p.label_en]),
+      ),
+    [permissions, locale],
+  );
+
+  const groupNames = useMemo(
+    () => new Map((groups as any[]).map((g) => [g.id, g.name])),
+    [groups],
+  );
+
+  const effectivePermissionsByUser = useMemo(() => {
+    const result = new Map<string, { direct: string[]; inherited: string[]; effective: string[] }>();
+    const directMap = new Map<string, string[]>();
+    const groupMap = new Map<string, string[]>();
+
+    (userPerms as any[]).forEach((perm) => {
+      directMap.set(perm.user_id, [...(directMap.get(perm.user_id) ?? []), perm.permission_key]);
+    });
+    (userGroups as any[]).forEach((link) => {
+      groupMap.set(link.user_id, [...(groupMap.get(link.user_id) ?? []), link.group_id]);
+    });
+
+    (profiles as any[]).forEach((profile) => {
+      const direct = Array.from(new Set(directMap.get(profile.id) ?? []));
+      const groupIds = groupMap.get(profile.id) ?? [];
+      const effective = buildEffectivePermissions(direct, groupIds, permissionGroupItems as any[]);
+      const inherited = effective.filter((key) => !direct.includes(key));
+      result.set(profile.id, { direct, inherited, effective });
+    });
+
+    return result;
+  }, [profiles, userGroups, userPerms, permissionGroupItems]);
 
   if (!can("users.manage") && !can("permissions.manage"))
     return <PageHeader title={t("no_permission")} />;
@@ -59,6 +108,7 @@ function Page() {
     qc.invalidateQueries({ queryKey: ["profiles"] });
     qc.invalidateQueries({ queryKey: ["upg_all"] });
     qc.invalidateQueries({ queryKey: ["up_all"] });
+    qc.invalidateQueries({ queryKey: ["permission_group_items"] });
   };
 
   return (
@@ -80,8 +130,33 @@ function Page() {
             cell: (r: any) =>
               (userGroups as any[])
                 .filter((g) => g.user_id === r.id)
-                .map((g) => (groups as any[]).find((x) => x.id === g.group_id)?.name)
+                .map((g) => groupNames.get(g.group_id) ?? g.group_id)
                 .join(", ") || "-",
+          },
+          {
+            key: "effective_permissions",
+            header: t("effective_permissions"),
+            cell: (r: any) => {
+              const entry = effectivePermissionsByUser.get(r.id);
+              if (!entry || !entry.effective.length) return "-";
+              return (
+                <div className="flex flex-wrap gap-1">
+                  {entry.effective.slice(0, 6).map((key) => (
+                    <span
+                      key={key}
+                      className="rounded-full border px-2 py-0.5 text-[11px] text-muted-foreground"
+                    >
+                      {permissionLabels.get(key) ?? key}
+                    </span>
+                  ))}
+                  {entry.effective.length > 6 ? (
+                    <span className="text-xs text-muted-foreground">
+                      +{entry.effective.length - 6}
+                    </span>
+                  ) : null}
+                </div>
+              );
+            },
           },
           {
             key: "act",

@@ -1,6 +1,7 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { userHasPermission } from "@/lib/permissions";
 import { PageHeader } from "@/components/PageHeader";
 import { DataTable } from "@/components/DataTable";
 import { Badge } from "@/components/ui/badge";
@@ -44,44 +45,12 @@ type AuditLogRowWithMetadata = AuditLogRow & {
   rawBefore: Record<string, string>;
 };
 
-async function hasAdminAccess() {
-  if (typeof window === "undefined") return false;
-
-  const { data } = await supabase.auth.getUser();
-  const userId = data.user?.id;
-  if (!userId) return false;
-
-  const permissions = new Set<string>();
-
-  const { data: direct } = await supabase
-    .from("user_permissions")
-    .select("permission_key")
-    .eq("user_id", userId);
-  direct?.forEach((row) => permissions.add(row.permission_key));
-
-  const { data: groupLinks } = await supabase
-    .from("user_permission_groups")
-    .select("group_id")
-    .eq("user_id", userId);
-  const groupIds = (groupLinks ?? []).map((row) => row.group_id);
-  if (groupIds.length) {
-    const { data: groupPerms } = await supabase
-      .from("permission_group_items")
-      .select("permission_key")
-      .in("group_id", groupIds);
-    groupPerms?.forEach((row) => permissions.add(row.permission_key));
-  }
-
-  return permissions.has("system.admin");
-}
-
 export const Route = createFileRoute("/_authenticated/audit-logs")({
   beforeLoad: async () => {
-    if (typeof window === "undefined") {
-      throw redirect({ to: "/login" });
-    }
+    const { data } = await supabase.auth.getUser();
+    if (!data.user) throw redirect({ to: "/login" });
 
-    const allowed = await hasAdminAccess();
+    const allowed = await userHasPermission("system.admin");
     if (!allowed) {
       throw redirect({ to: "/dashboard" });
     }
