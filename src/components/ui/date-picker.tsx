@@ -25,7 +25,13 @@ function formatDateValue(date: Date) {
   return date.toISOString().slice(0, 10);
 }
 
-function DatePicker({ value, onValueChange, placeholder = "YYYY/MM/DD", className, disabled }: DatePickerProps) {
+function DatePicker({
+  value,
+  onValueChange,
+  placeholder = "YYYY/MM/DD",
+  className,
+  disabled,
+}: DatePickerProps) {
   const [open, setOpen] = React.useState(false);
   const selectedDate = parseDateValue(value);
 
@@ -36,7 +42,11 @@ function DatePicker({ value, onValueChange, placeholder = "YYYY/MM/DD", classNam
           type="button"
           variant="outline"
           disabled={disabled}
-          className={cn("w-full justify-start text-start font-normal", !value && "text-muted-foreground", className)}
+          className={cn(
+            "w-full justify-start text-start font-normal",
+            !value && "text-muted-foreground",
+            className,
+          )}
         >
           <CalendarIcon className="me-2 h-4 w-4" />
           <span>{selectedDate ? fmtDate(selectedDate) : placeholder}</span>

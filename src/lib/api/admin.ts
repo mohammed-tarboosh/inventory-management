@@ -4,7 +4,10 @@ import { getServerConfig } from "../config.server";
 
 export function getAdminSupabase() {
   const config = getServerConfig();
-  const serviceRole = config.supabaseServiceRole ?? process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.SUPABASE_SERVICE_ROLE;
+  const serviceRole =
+    config.supabaseServiceRole ??
+    process.env.SUPABASE_SERVICE_ROLE_KEY ??
+    process.env.SUPABASE_SERVICE_ROLE;
   const SUPABASE_URL = process.env.SUPABASE_URL;
   if (!serviceRole) throw new Error("Missing SUPABASE_SERVICE_ROLE in server environment");
   if (!SUPABASE_URL) throw new Error("Missing SUPABASE_URL in server environment");
@@ -14,7 +17,10 @@ export function getAdminSupabase() {
   });
 }
 
-export async function setAuditChangedBy(client: ReturnType<typeof getAdminSupabase>, userId: string | null) {
+export async function setAuditChangedBy(
+  client: ReturnType<typeof getAdminSupabase>,
+  userId: string | null,
+) {
   if (!userId) return;
   try {
     // RPC will call the helper function created by migration
@@ -25,7 +31,10 @@ export async function setAuditChangedBy(client: ReturnType<typeof getAdminSupaba
   }
 }
 
-export async function runWithAudit(userId: string | null, fn: (client: ReturnType<typeof getAdminSupabase>) => Promise<any>) {
+export async function runWithAudit(
+  userId: string | null,
+  fn: (client: ReturnType<typeof getAdminSupabase>) => Promise<any>,
+) {
   const client = getAdminSupabase();
   if (userId) {
     await setAuditChangedBy(client, userId);

@@ -8,7 +8,7 @@
 - `20260527154146_fe578b1d-13bf-48af-89ef-f855e3826fa3.sql` — دوال trigger مساعدة (`set_updated_at`, `compute_debt_local`) وتعديلات على views.
 - `20260527154200_eac94170-1096-414c-b67b-c8325bb35c6d.sql` — منح وصلاحيات على دوال وإجراءات مخزنة.
 - `20260604090000_restrict_audit_logs_to_admins.sql` — يقصر قراءة `audit_logs` على من يملك `system.admin`.
- - `20260604100000_prevent_currency_code_update.sql` — يمنع تعديل حقل المفتاح `code` في جدول `currencies` بعد إنشائه (يرفض UPDATE عند تغيير `code`).
+- `20260604100000_prevent_currency_code_update.sql` — يمنع تعديل حقل المفتاح `code` في جدول `currencies` بعد إنشائه (يرفض UPDATE عند تغيير `code`).
 
 Recent changes applied locally:
 

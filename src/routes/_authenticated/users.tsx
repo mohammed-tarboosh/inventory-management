@@ -4,7 +4,14 @@ import { supabase } from "@/integrations/supabase/client";
 import { PageHeader } from "@/components/PageHeader";
 import { DataTable } from "@/components/DataTable";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -23,13 +30,30 @@ function Page() {
   const { can } = usePermissions();
   const qc = useQueryClient();
 
-  const { data: profiles = [] } = useQuery({ queryKey: ["profiles"], queryFn: async () => (await supabase.from("profiles").select("*").order("username")).data ?? [] });
-  const { data: permissions = [] } = useQuery({ queryKey: ["permissions_list"], queryFn: async () => (await supabase.from("permissions").select("*").order("category")).data ?? [] });
-  const { data: groups = [] } = useQuery({ queryKey: ["pgroups"], queryFn: async () => (await supabase.from("permission_groups").select("*")).data ?? [] });
-  const { data: userGroups = [] } = useQuery({ queryKey: ["upg_all"], queryFn: async () => (await supabase.from("user_permission_groups").select("*")).data ?? [] });
-  const { data: userPerms = [] } = useQuery({ queryKey: ["up_all"], queryFn: async () => (await supabase.from("user_permissions").select("*")).data ?? [] });
+  const { data: profiles = [] } = useQuery({
+    queryKey: ["profiles"],
+    queryFn: async () => (await supabase.from("profiles").select("*").order("username")).data ?? [],
+  });
+  const { data: permissions = [] } = useQuery({
+    queryKey: ["permissions_list"],
+    queryFn: async () =>
+      (await supabase.from("permissions").select("*").order("category")).data ?? [],
+  });
+  const { data: groups = [] } = useQuery({
+    queryKey: ["pgroups"],
+    queryFn: async () => (await supabase.from("permission_groups").select("*")).data ?? [],
+  });
+  const { data: userGroups = [] } = useQuery({
+    queryKey: ["upg_all"],
+    queryFn: async () => (await supabase.from("user_permission_groups").select("*")).data ?? [],
+  });
+  const { data: userPerms = [] } = useQuery({
+    queryKey: ["up_all"],
+    queryFn: async () => (await supabase.from("user_permissions").select("*")).data ?? [],
+  });
 
-  if (!can("users.manage") && !can("permissions.manage")) return <PageHeader title={t("no_permission")} />;
+  if (!can("users.manage") && !can("permissions.manage"))
+    return <PageHeader title={t("no_permission")} />;
 
   const refetch = () => {
     qc.invalidateQueries({ queryKey: ["profiles"] });
@@ -39,41 +63,93 @@ function Page() {
 
   return (
     <div>
-      <PageHeader title={t("users")}>{can("users.manage") && (
-        <UserDialog trigger={<Button>{t("new_user")}</Button>} onDone={refetch} />
-      )}</PageHeader>
-      <DataTable rows={profiles as any[]} columns={[
-        { key: "u", header: t("username"), cell: (r: any) => r.username },
-        { key: "n", header: t("full_name"), cell: (r: any) => r.full_name ?? "-" },
-        { key: "a", header: t("is_active"), cell: (r: any) => r.is_active ? "✓" : "✗" },
-        { key: "g", header: t("role_group"), cell: (r: any) => (userGroups as any[]).filter(g => g.user_id === r.id).map(g => (groups as any[]).find(x => x.id === g.group_id)?.name).join(", ") || "-" },
-        { key: "act", header: t("actions"), cell: (r: any) => (
-          <div className="flex items-center gap-2">
-            {can("users.manage") && (
-              <>
-                <UserDialog profile={r} trigger={<Button variant="ghost" size="icon">✎</Button>} onDone={refetch} />
-                <ConfirmDelete trigger={<Button variant="ghost" size="icon" className="text-destructive">🗑</Button>} onConfirm={async () => {
-                  try {
-                    const { data: authUser } = await supabase.auth.getUser();
-                    await deleteUser({ data: { userId: r.id, actorId: authUser.user?.id ?? undefined } });
-                    toast.success(t("delete_success"));
-                    refetch();
-                  } catch (err: any) { toast.error(err?.message || String(err)); }
-                }} />
-                <Button variant="ghost" size="icon" onClick={async () => {
-                  try {
-                    await adminResetPassword({ data: { userId: r.id } });
-                    toast.success(t("reset_email_sent"));
-                  } catch (err: any) { toast.error(err?.message || String(err)); }
-                }}>⟳</Button>
-              </>
-            )}
-            {can("permissions.manage") && (
-              <PermDialog profile={r} permissions={permissions as any[]} groups={groups as any[]} userGroups={userGroups as any[]} userPerms={userPerms as any[]} onDone={refetch} locale={locale} />
-            )}
-          </div>
-        ) },
-      ]} />
+      <PageHeader title={t("users")}>
+        {can("users.manage") && (
+          <UserDialog trigger={<Button>{t("new_user")}</Button>} onDone={refetch} />
+        )}
+      </PageHeader>
+      <DataTable
+        rows={profiles as any[]}
+        columns={[
+          { key: "u", header: t("username"), cell: (r: any) => r.username },
+          { key: "n", header: t("full_name"), cell: (r: any) => r.full_name ?? "-" },
+          { key: "a", header: t("is_active"), cell: (r: any) => (r.is_active ? "✓" : "✗") },
+          {
+            key: "g",
+            header: t("role_group"),
+            cell: (r: any) =>
+              (userGroups as any[])
+                .filter((g) => g.user_id === r.id)
+                .map((g) => (groups as any[]).find((x) => x.id === g.group_id)?.name)
+                .join(", ") || "-",
+          },
+          {
+            key: "act",
+            header: t("actions"),
+            cell: (r: any) => (
+              <div className="flex items-center gap-2">
+                {can("users.manage") && (
+                  <>
+                    <UserDialog
+                      profile={r}
+                      trigger={
+                        <Button variant="ghost" size="icon">
+                          ✎
+                        </Button>
+                      }
+                      onDone={refetch}
+                    />
+                    <ConfirmDelete
+                      trigger={
+                        <Button variant="ghost" size="icon" className="text-destructive">
+                          🗑
+                        </Button>
+                      }
+                      onConfirm={async () => {
+                        try {
+                          const { data: authUser } = await supabase.auth.getUser();
+                          await deleteUser({
+                            data: { userId: r.id, actorId: authUser.user?.id ?? undefined },
+                          });
+                          toast.success(t("delete_success"));
+                          refetch();
+                        } catch (err: any) {
+                          toast.error(err?.message || String(err));
+                        }
+                      }}
+                    />
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={async () => {
+                        try {
+                          await adminResetPassword({ data: { userId: r.id } });
+                          toast.success(t("reset_email_sent"));
+                        } catch (err: any) {
+                          toast.error(err?.message || String(err));
+                        }
+                      }}
+                    >
+                      ⟳
+                    </Button>
+                  </>
+                )}
+                {can("permissions.manage") && (
+                  <PermDialog
+                    profile={r}
+                    permissions={permissions as any[]}
+                    groups={groups as any[]}
+                    userGroups={userGroups as any[]}
+                    userPerms={userPerms as any[]}
+                    onDone={refetch}
+                    locale={locale}
+                  />
+                )}
+              </div>
+            ),
+          },
+        ]}
+      />
     </div>
   );
 }
@@ -86,14 +162,24 @@ function PermDialog({ profile, permissions, groups, userGroups, userPerms, onDon
 
   useEffect(() => {
     if (!open) return;
-    setSelectedGroups(new Set((userGroups as any[]).filter((g) => g.user_id === profile.id).map((g) => g.group_id)));
-    setSelectedPerms(new Set((userPerms as any[]).filter((p) => p.user_id === profile.id).map((p) => p.permission_key)));
+    setSelectedGroups(
+      new Set((userGroups as any[]).filter((g) => g.user_id === profile.id).map((g) => g.group_id)),
+    );
+    setSelectedPerms(
+      new Set(
+        (userPerms as any[]).filter((p) => p.user_id === profile.id).map((p) => p.permission_key),
+      ),
+    );
   }, [open, profile.id, userGroups, userPerms]);
 
   const save = async () => {
     // Compute diffs instead of wiping all rows: safer for partial failures.
-    const existingGroupIds = new Set((userGroups as any[]).filter((g) => g.user_id === profile.id).map((g) => g.group_id));
-    const existingPermKeys = new Set((userPerms as any[]).filter((p) => p.user_id === profile.id).map((p) => p.permission_key));
+    const existingGroupIds = new Set(
+      (userGroups as any[]).filter((g) => g.user_id === profile.id).map((g) => g.group_id),
+    );
+    const existingPermKeys = new Set(
+      (userPerms as any[]).filter((p) => p.user_id === profile.id).map((p) => p.permission_key),
+    );
 
     const groupsToInsert = Array.from(selectedGroups).filter((g) => !existingGroupIds.has(g));
     const groupsToDelete = Array.from(existingGroupIds).filter((g: any) => !selectedGroups.has(g));
@@ -103,33 +189,62 @@ function PermDialog({ profile, permissions, groups, userGroups, userPerms, onDon
 
     // Execute deletions first (idempotent), then inserts. Handle errors explicitly.
     if (groupsToDelete.length) {
-      const { error } = await supabase.from("user_permission_groups").delete().in("group_id", groupsToDelete).eq("user_id", profile.id);
-      if (error) { toast.error(error.message); return; }
+      const { error } = await supabase
+        .from("user_permission_groups")
+        .delete()
+        .in("group_id", groupsToDelete)
+        .eq("user_id", profile.id);
+      if (error) {
+        toast.error(error.message);
+        return;
+      }
     }
 
     if (permsToDelete.length) {
-      const { error } = await supabase.from("user_permissions").delete().in("permission_key", permsToDelete).eq("user_id", profile.id);
-      if (error) { toast.error(error.message); return; }
+      const { error } = await supabase
+        .from("user_permissions")
+        .delete()
+        .in("permission_key", permsToDelete)
+        .eq("user_id", profile.id);
+      if (error) {
+        toast.error(error.message);
+        return;
+      }
     }
 
     if (groupsToInsert.length) {
       const { data: authUser } = await supabase.auth.getUser();
       const actorId = authUser?.user?.id ?? null;
-      const payload = groupsToInsert.map((g) => ({ user_id: profile.id, group_id: g, created_by: actorId }));
+      const payload = groupsToInsert.map((g) => ({
+        user_id: profile.id,
+        group_id: g,
+        created_by: actorId,
+      }));
       const { error } = await supabase.from("user_permission_groups").insert(payload);
-      if (error) { toast.error(error.message); return; }
+      if (error) {
+        toast.error(error.message);
+        return;
+      }
     }
 
     if (permsToInsert.length) {
       const { data: authUser2 } = await supabase.auth.getUser();
       const actorId2 = authUser2?.user?.id ?? null;
-      const payload = permsToInsert.map((p) => ({ user_id: profile.id, permission_key: p, created_by: actorId2 }));
+      const payload = permsToInsert.map((p) => ({
+        user_id: profile.id,
+        permission_key: p,
+        created_by: actorId2,
+      }));
       const { error } = await supabase.from("user_permissions").insert(payload);
-      if (error) { toast.error(error.message); return; }
+      if (error) {
+        toast.error(error.message);
+        return;
+      }
     }
 
     toast.success(t("save_success"));
-    setOpen(false); onDone();
+    setOpen(false);
+    onDone();
   };
 
   const toggle = (set: Set<string>, setSet: (s: Set<string>) => void, key: string) => {
@@ -143,16 +258,30 @@ function PermDialog({ profile, permissions, groups, userGroups, userPerms, onDon
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild><Button variant="ghost" size="icon"><ShieldCheck className="h-4 w-4" /></Button></DialogTrigger>
+      <DialogTrigger asChild>
+        <Button variant="ghost" size="icon">
+          <ShieldCheck className="h-4 w-4" />
+        </Button>
+      </DialogTrigger>
       <DialogContent className="w-[calc(100vw-1rem)] max-w-2xl max-h-[80vh] overflow-y-auto">
-        <DialogHeader><DialogTitle>{t("permissions")} - {profile.username}</DialogTitle></DialogHeader>
+        <DialogHeader>
+          <DialogTitle>
+            {t("permissions")} - {profile.username}
+          </DialogTitle>
+        </DialogHeader>
         <div className="space-y-4">
           <div>
             <h3 className="font-semibold mb-2">{t("permission_groups")}</h3>
             <div className="flex flex-wrap gap-3">
               {groups.map((g: any) => (
-                <label key={g.id} className="flex items-center gap-2 border rounded px-3 py-2 cursor-pointer">
-                  <Checkbox checked={selectedGroups.has(g.id)} onCheckedChange={() => toggle(selectedGroups, setSelectedGroups, g.id)} />
+                <label
+                  key={g.id}
+                  className="flex items-center gap-2 border rounded px-3 py-2 cursor-pointer"
+                >
+                  <Checkbox
+                    checked={selectedGroups.has(g.id)}
+                    onCheckedChange={() => toggle(selectedGroups, setSelectedGroups, g.id)}
+                  />
                   <span>{g.name}</span>
                 </label>
               ))}
@@ -166,7 +295,10 @@ function PermDialog({ profile, permissions, groups, userGroups, userPerms, onDon
                 <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                   {perms.map((p: any) => (
                     <label key={p.key} className="flex items-center gap-2 cursor-pointer">
-                      <Checkbox checked={selectedPerms.has(p.key)} onCheckedChange={() => toggle(selectedPerms, setSelectedPerms, p.key)} />
+                      <Checkbox
+                        checked={selectedPerms.has(p.key)}
+                        onCheckedChange={() => toggle(selectedPerms, setSelectedPerms, p.key)}
+                      />
                       <span className="text-sm">{locale === "ar" ? p.label_ar : p.label_en}</span>
                     </label>
                   ))}
@@ -176,7 +308,9 @@ function PermDialog({ profile, permissions, groups, userGroups, userPerms, onDon
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => setOpen(false)}>{t("cancel")}</Button>
+          <Button variant="outline" onClick={() => setOpen(false)}>
+            {t("cancel")}
+          </Button>
           <Button onClick={save}>{t("save")}</Button>
         </DialogFooter>
       </DialogContent>
@@ -203,7 +337,11 @@ function UserDialog({ profile, trigger, onDone }: any) {
       setEmail(profile.email || "");
       setIsActive(!!profile.is_active);
     } else {
-      setUsername(""); setFullName(""); setEmail(""); setPassword(""); setIsActive(true);
+      setUsername("");
+      setFullName("");
+      setEmail("");
+      setPassword("");
+      setIsActive(true);
     }
   }, [open, isEdit, profile]);
 
@@ -213,24 +351,41 @@ function UserDialog({ profile, trigger, onDone }: any) {
       const { data: authUser } = await supabase.auth.getUser();
       const actorId = authUser.user?.id ?? undefined;
       if (isEdit) {
-        await updateUser({ data: { userId: profile.id, actorId, username, full_name: fullName, email, is_active: isActive } });
+        await updateUser({
+          data: {
+            userId: profile.id,
+            actorId,
+            username,
+            full_name: fullName,
+            email,
+            is_active: isActive,
+          },
+        });
         toast.success(t("save_success"));
       } else {
-        await createUser({ data: { actorId, username, full_name: fullName, email, password, is_active: isActive } });
+        await createUser({
+          data: { actorId, username, full_name: fullName, email, password, is_active: isActive },
+        });
         toast.success(t("save_success"));
       }
       setOpen(false);
       onDone?.();
     } catch (err: any) {
       toast.error(err?.message || String(err));
-    } finally { setLoading(false); }
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>{trigger ?? <Button>{isEdit ? t("edit") : t("new_user")}</Button>}</DialogTrigger>
+      <DialogTrigger asChild>
+        {trigger ?? <Button>{isEdit ? t("edit") : t("new_user")}</Button>}
+      </DialogTrigger>
       <DialogContent className="w-[calc(100vw-1rem)] max-w-md">
-        <DialogHeader><DialogTitle>{isEdit ? t("edit_user") : t("new_user")}</DialogTitle></DialogHeader>
+        <DialogHeader>
+          <DialogTitle>{isEdit ? t("edit_user") : t("new_user")}</DialogTitle>
+        </DialogHeader>
         <div className="space-y-4">
           <div>
             <Label>{t("username")}</Label>
@@ -247,7 +402,12 @@ function UserDialog({ profile, trigger, onDone }: any) {
           {!isEdit && (
             <div>
               <Label>{t("password")}</Label>
-              <Input type="password" value={password} onChange={(e: any) => setPassword(e.target.value)} required />
+              <Input
+                type="password"
+                value={password}
+                onChange={(e: any) => setPassword(e.target.value)}
+                required
+              />
             </div>
           )}
           <div className="flex items-center gap-2">
@@ -256,8 +416,12 @@ function UserDialog({ profile, trigger, onDone }: any) {
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => setOpen(false)}>{t("cancel")}</Button>
-          <Button onClick={save} disabled={loading}>{t("save")}</Button>
+          <Button variant="outline" onClick={() => setOpen(false)}>
+            {t("cancel")}
+          </Button>
+          <Button onClick={save} disabled={loading}>
+            {t("save")}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

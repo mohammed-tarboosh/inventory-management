@@ -204,7 +204,9 @@ const Sidebar = React.forwardRef<
               <SheetTitle>Sidebar</SheetTitle>
               <SheetDescription>Displays the mobile sidebar.</SheetDescription>
             </SheetHeader>
-            <div className="flex h-full w-full flex-col rounded-md bg-sidebar px-1 py-2">{children}</div>
+            <div className="flex h-full w-full flex-col rounded-md bg-sidebar px-1 py-2">
+              {children}
+            </div>
           </SheetContent>
         </Sheet>
       );

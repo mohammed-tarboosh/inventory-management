@@ -18,7 +18,12 @@ export function AppHeader() {
       <span className="hidden max-w-[10rem] truncate text-sm text-muted-foreground sm:inline">
         {user?.profile?.full_name ?? user?.profile?.username}
       </span>
-      <Button variant="ghost" size="sm" className="shrink-0 gap-1 px-2 sm:px-3" onClick={() => setLocale(locale === "ar" ? "en" : "ar") }>
+      <Button
+        variant="ghost"
+        size="sm"
+        className="shrink-0 gap-1 px-2 sm:px-3"
+        onClick={() => setLocale(locale === "ar" ? "en" : "ar")}
+      >
         <Languages className="h-4 w-4" />
         <span className="hidden sm:inline">{locale === "ar" ? "EN" : "ع"}</span>
       </Button>

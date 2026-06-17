@@ -50,7 +50,11 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
 export const myFn = createServerFn({ method: "POST" })
-  .inputValidator(z.object({ /* ... */ }))
+  .inputValidator(
+    z.object({
+      /* ... */
+    }),
+  )
   .handler(async ({ data, ctx }) => {
     // كود server-only هنا
     return { ok: true };

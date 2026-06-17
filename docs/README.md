@@ -16,6 +16,7 @@
 - `DEPLOYMENT.md` — خطوات البناء والنشر لمشروع SSR.
 - `CONTRIBUTING.md` — تعليمات الإسهام، lint، format.
 - `TROUBLESHOOTING.md` — أخطاء شائعة وحلول سريعة.
+- `.github/AGENTS.md` — دليل أدوار الوكلاء وتوجيهات العمل على المشروع.
 
 ابدأ بـ `QUICKSTART.md` لتشغيل المشروع محلياً.
 

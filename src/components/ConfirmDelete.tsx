@@ -1,10 +1,26 @@
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Trash2 } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import type { ReactNode } from "react";
 
-export function ConfirmDelete({ onConfirm, trigger }: { onConfirm: () => void; trigger?: ReactNode }) {
+export function ConfirmDelete({
+  onConfirm,
+  trigger,
+}: {
+  onConfirm: () => void;
+  trigger?: ReactNode;
+}) {
   const { t } = useI18n();
   return (
     <AlertDialog>
@@ -22,7 +38,10 @@ export function ConfirmDelete({ onConfirm, trigger }: { onConfirm: () => void; t
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
-          <AlertDialogAction onClick={onConfirm} className="bg-destructive text-destructive-foreground">
+          <AlertDialogAction
+            onClick={onConfirm}
+            className="bg-destructive text-destructive-foreground"
+          >
             {t("delete")}
           </AlertDialogAction>
         </AlertDialogFooter>

@@ -52,16 +52,33 @@ function LoginPage() {
         <form onSubmit={submit} className="space-y-4">
           <div>
             <Label htmlFor="u">{t("username")}</Label>
-            <Input id="u" value={username} onChange={(e) => setUsername(e.target.value)} required autoFocus pattern="[a-zA-Z0-9_.\\-]+" />
+            <Input
+              id="u"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              required
+              autoFocus
+              pattern="[a-zA-Z0-9_.\\-]+"
+            />
           </div>
           <div>
             <Label htmlFor="p">{t("password")}</Label>
-            <Input id="p" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+            <Input
+              id="p"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+            />
           </div>
-          <Button type="submit" className="w-full" disabled={loading}>{t("sign_in")}</Button>
+          <Button type="submit" className="w-full" disabled={loading}>
+            {t("sign_in")}
+          </Button>
         </form>
         <div className="mt-4 text-center text-xs text-muted-foreground">
-          <Link to="/signup" className="underline">{t("create_first_admin")}</Link>
+          <Link to="/signup" className="underline">
+            {t("create_first_admin")}
+          </Link>
         </div>
       </Card>
     </div>

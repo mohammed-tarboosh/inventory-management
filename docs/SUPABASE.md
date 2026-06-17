@@ -12,8 +12,8 @@
 
 - `client.ts` — عميل Supabase للعميل (publishable key). يستخدم متغيرات `VITE_SUPABASE_*`.
 - `client.server.ts` — عميل server/admin يستخدم `SUPABASE_SERVICE_ROLE_KEY` للعمليات الموثوقة.
- - `auth-attacher.ts` — ميدلوير يضيف Authorization header لنداءات السيرفر استناداً إلى جلسة المستخدم.
- - Note: `auth-middleware.ts` was removed from the codebase; token validation for server-side flows is handled via server functions and `supabaseAdmin` where needed.
+- `auth-attacher.ts` — ميدلوير يضيف Authorization header لنداءات السيرفر استناداً إلى جلسة المستخدم.
+- Note: `auth-middleware.ts` was removed from the codebase; token validation for server-side flows is handled via server functions and `supabaseAdmin` where needed.
 - `types.ts` — أنماط الجداول المولدة (generated) من schema.
 
 ملاحظات أمان:
@@ -36,3 +36,25 @@ RLS وPolicies:
 ملاحظة تشغيل محلي:
 
 - إذا غيرت `project_id` في `supabase/config.toml`، أعد تشغيل البيئة المحلية (`supabase stop --all` ثم `supabase start`) حتى يتحدث اسم حاويات Docker ووسومها.
+
+## Local development checklist
+
+- شغّل البيئة المحلية عبر:
+
+```bash
+supabase start
+```
+
+- تأكد من حالة الخدمات عبر:
+
+```bash
+supabase status
+```
+
+- لتطبيق الترحيلات محلياً بعد تحديثها:
+
+```bash
+supabase db reset
+```
+
+- إذا كانت `MCP` متاحة في `.vscode/mcp.json`، استخدمها للوصول إلى قاعدة البيانات محلياً من الوكلاء.

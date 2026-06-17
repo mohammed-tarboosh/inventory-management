@@ -59,7 +59,10 @@ export function AppSidebar() {
                 .filter((i) => !i.perm || can(i.perm))
                 .map((i) => (
                   <SidebarMenuItem key={i.to}>
-                    <SidebarMenuButton asChild isActive={path === i.to || path.startsWith(i.to + "/")}>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={path === i.to || path.startsWith(i.to + "/")}
+                    >
                       <Link to={i.to} className="flex items-center gap-2">
                         <i.icon className="h-4 w-4" />
                         <span>{i.label}</span>

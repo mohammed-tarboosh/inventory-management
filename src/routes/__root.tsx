@@ -132,7 +132,9 @@ function AuthListener() {
   const qc = useQueryClient();
   useI18n(); // ensure provider mounted
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(() => {
       router.invalidate();
       qc.invalidateQueries();
     });
