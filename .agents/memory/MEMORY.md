@@ -1,0 +1,1 @@
+- [Replit Auth architecture](replit-auth.md) — OIDC via server functions (not API routes); Supabase session bridged via deterministic credentials post-login.
