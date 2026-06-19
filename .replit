@@ -10,10 +10,8 @@ channel = "stable-25_05"
 [userenv]
 
 [userenv.shared]
-SUPABASE_PUBLISHABLE_KEY = "sb_publishable_bhHc_GY1WvxcGRB23ASUXQ_d36_-ORU"
 SUPABASE_URL = "https://arsqinmyguejjdxsddiq.supabase.co"
 VITE_SUPABASE_PROJECT_ID = "arsqinmyguejjdxsddiq"
-VITE_SUPABASE_PUBLISHABLE_KEY = "sb_publishable_bhHc_GY1WvxcGRB23ASUXQ_d36_-ORU"
 VITE_SUPABASE_URL = "https://arsqinmyguejjdxsddiq.supabase.co"
 PORT = "5000"
 
