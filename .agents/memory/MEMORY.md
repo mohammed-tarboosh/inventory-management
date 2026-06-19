@@ -1,1 +1,2 @@
 - [Replit Auth architecture](replit-auth.md) — OIDC via server functions (not API routes); Supabase session bridged via deterministic credentials post-login.
+- [Supabase env .env override](supabase-env-fix.md) — .env must stay in sync with Replit shared env vars; was pointing to localhost instead of production Supabase project.
