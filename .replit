@@ -14,6 +14,7 @@ SUPABASE_URL = "https://arsqinmyguejjdxsddiq.supabase.co"
 VITE_SUPABASE_PROJECT_ID = "arsqinmyguejjdxsddiq"
 VITE_SUPABASE_URL = "https://arsqinmyguejjdxsddiq.supabase.co"
 PORT = "5000"
+VITE_SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFyc3Fpbm15Z3VlampkeHNkZGlxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE3MjIwNDYsImV4cCI6MjA5NzI5ODA0Nn0.j9qZmzQO8Xf00t0Ob5IVZzeSYhbz4ibPbauw8goCl64"
 
 [workflows]
 runButton = "Project"
