@@ -1,10 +1,10 @@
-import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { useI18n } from "@/lib/i18n";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "@tanstack/react-router";
 import { Languages, LogOut } from "lucide-react";
 import { useCurrentUser } from "@/lib/permissions";
+import { SidebarToggleButton } from "@/components/AppSidebar";
 
 export function AppHeader() {
   const { locale, setLocale, t } = useI18n();
@@ -12,12 +12,18 @@ export function AppHeader() {
   const { data: user } = useCurrentUser();
 
   return (
-    <header className="min-h-14 flex flex-wrap items-center gap-2 border-b px-2 py-2 bg-card sm:px-3">
-      <SidebarTrigger className="shrink-0" />
+    <header className="h-14 flex items-center gap-2 border-b px-3 bg-card shrink-0">
+      {/* زر فتح/إغلاق السايدبار */}
+      <SidebarToggleButton />
+
       <div className="flex-1 min-w-0" />
+
+      {/* اسم المستخدم */}
       <span className="hidden max-w-[10rem] truncate text-sm text-muted-foreground sm:inline">
         {user?.profile?.full_name ?? user?.profile?.username}
       </span>
+
+      {/* تبديل اللغة */}
       <Button
         variant="ghost"
         size="sm"
@@ -27,6 +33,8 @@ export function AppHeader() {
         <Languages className="h-4 w-4" />
         <span className="hidden sm:inline">{locale === "ar" ? "EN" : "ع"}</span>
       </Button>
+
+      {/* تسجيل الخروج */}
       <Button
         variant="ghost"
         size="sm"
