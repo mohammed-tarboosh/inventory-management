@@ -22,12 +22,13 @@ import {
   Shield,
   Settings,
   Ruler,
+  ClipboardList,
 } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { usePermissions } from "@/lib/permissions";
 
 export function AppSidebar() {
-  const { t } = useI18n();
+  const { t, dir } = useI18n();
   const { can } = usePermissions();
   const path = useRouterState({ select: (r) => r.location.pathname });
 
@@ -42,22 +43,38 @@ export function AppSidebar() {
     { to: "/movements", icon: Activity, label: t("movements"), perm: "items.view" },
     { to: "/debts", icon: Wallet, label: t("debts"), perm: "debts.view" },
     { to: "/reports", icon: BarChart3, label: t("reports"), perm: "reports.view" },
-    { to: "/users", icon: Shield, label: t("users"), perm: "users.manage" },
+    { to: "/audit-logs", icon: ClipboardList, label: t("audit_logs"), perm: "system.admin" },
+    {
+      to: "/users",
+      icon: Shield,
+      label: t("users"),
+      perm: "users.manage",
+      altPerm: "permissions.manage",
+    },
+    {
+      to: "/permission-groups",
+      icon: Shield,
+      label: t("permission_groups"),
+      perm: "permissions.manage",
+    },
     { to: "/settings", icon: Settings, label: t("settings"), perm: "settings.view" },
   ];
 
   return (
-    <Sidebar collapsible="icon">
+    <Sidebar side={dir === "rtl" ? "right" : "left"} collapsible="icon">
       <SidebarContent>
         <SidebarGroup>
           <SidebarGroupLabel>{t("app_name")}</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {items
-                .filter((i) => !i.perm || can(i.perm))
+                .filter((i) => !i.perm || can(i.perm) || (i.altPerm ? can(i.altPerm) : false))
                 .map((i) => (
                   <SidebarMenuItem key={i.to}>
-                    <SidebarMenuButton asChild isActive={path === i.to || path.startsWith(i.to + "/")}>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={path === i.to || path.startsWith(i.to + "/")}
+                    >
                       <Link to={i.to} className="flex items-center gap-2">
                         <i.icon className="h-4 w-4" />
                         <span>{i.label}</span>
