@@ -51,7 +51,7 @@ function Dashboard() {
   return (
     <div className="space-y-4">
       <h1 className="text-2xl font-bold">{t("welcome")}</h1>
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <Stat icon={Package} label={t("stats_items")} value={fmtInt(data?.items)} />
         <Stat icon={FileText} label={t("stats_invoices")} value={fmtInt(data?.invoices)} />
         <Stat icon={Users} label={t("stats_customers")} value={fmtInt(data?.customers)} />

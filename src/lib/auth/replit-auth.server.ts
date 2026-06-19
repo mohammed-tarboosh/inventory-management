@@ -74,7 +74,7 @@ export const getOidcLoginUrl = createServerFn({ method: "GET" }).handler(async (
 // Verifies state, exchanges the OIDC code, then signs the user into Supabase
 // (auto-creating an account if this is their first login).
 export const exchangeOidcCode = createServerFn({ method: "POST" })
-  .inputValidator(
+  .validator(
     z.object({
       code: z.string(),
       state: z.string(),

@@ -6,7 +6,10 @@ import { AppHeader } from "@/components/AppHeader";
 
 export const Route = createFileRoute("/_authenticated")({
   beforeLoad: async ({ location }) => {
-    if (typeof window === "undefined") return;
+    // Server-side: avoid rendering protected chrome during SSR — redirect to login.
+    if (typeof window === "undefined") {
+      throw redirect({ to: "/login", search: { redirect: location.href } });
+    }
     const { data } = await supabase.auth.getUser();
     if (!data.user) {
       throw redirect({ to: "/login", search: { redirect: location.href } });

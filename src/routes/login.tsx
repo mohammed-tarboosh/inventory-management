@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { useI18n } from "@/lib/i18n";
+import { resolveAuthEmail } from "@/lib/auth";
 import { toast } from "sonner";
 import { getOidcLoginUrl } from "@/lib/auth/replit-auth.server";
 
@@ -44,11 +45,22 @@ function LoginPage() {
   const submit = async (e: FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    const email = `${username.trim().toLowerCase()}@inv.local`;
+    const { email, error: usernameError } = resolveAuthEmail(username);
+
+    if (usernameError) {
+      setLoading(false);
+      toast.error(usernameError);
+      return;
+    }
+
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     setLoading(false);
     if (error) {
-      toast.error(t("login_failed"));
+      if (/email not confirmed/i.test(error.message)) {
+        toast.error(t("email_not_confirmed"));
+        return;
+      }
+      toast.error(error.message || t("login_failed"));
       return;
     }
     nav({ to: "/dashboard" });
@@ -85,17 +97,34 @@ function LoginPage() {
         <form onSubmit={submit} className="space-y-4">
           <div>
             <Label htmlFor="u">{t("username")}</Label>
-            <Input id="u" value={username} onChange={(e) => setUsername(e.target.value)} required autoFocus />
+            <Input
+              id="u"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              required
+              autoFocus
+              pattern="[a-zA-Z0-9_.-]+"
+            />
           </div>
           <div>
             <Label htmlFor="p">{t("password")}</Label>
-            <Input id="p" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+            <Input
+              id="p"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+            />
           </div>
-          <Button type="submit" className="w-full" disabled={loading}>{t("sign_in")}</Button>
+          <Button type="submit" className="w-full" disabled={loading}>
+            {t("sign_in")}
+          </Button>
         </form>
 
-        <div className="text-center text-xs text-muted-foreground">
-          <Link to="/signup" className="underline">{t("create_first_admin")}</Link>
+        <div className="mt-4 text-center text-xs text-muted-foreground">
+          <Link to="/signup" className="underline">
+            {t("create_first_admin")}
+          </Link>
         </div>
       </Card>
     </div>
