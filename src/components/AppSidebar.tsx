@@ -1,5 +1,8 @@
-import { Link, useRouterState } from "@tanstack/react-router";
+import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { UserAvatar } from "@/components/UserAvatar";
+import { LogOut, Settings2, User } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useI18n } from "@/lib/i18n";
 import { usePermissions, useCurrentUser } from "@/lib/permissions";
@@ -94,6 +97,7 @@ function useNavItems() {
     { to: "/users",            icon: Shield,          label: t("users"),             perm: "users.manage",        altPerm: "permissions.manage" },
     { to: "/permission-groups",icon: Shield,          label: t("permission_groups"), perm: "permissions.manage",  altPerm: null },
     { to: "/settings",         icon: Settings,        label: t("settings"),          perm: "settings.view",       altPerm: null },
+    { to: "/profile",          icon: User,            label: t("my_profile"),        perm: null,                  altPerm: null },
   ];
 
   return all.filter((i) => !i.perm || can(i.perm) || (i.altPerm ? can(i.altPerm) : false));
@@ -108,6 +112,12 @@ export function AppSidebar() {
   const pathname = useRouterState({ select: (r) => r.location.pathname });
   const navItems = useNavItems();
   const drawerRef = useRef<HTMLDivElement>(null);
+  const nav = useNavigate();
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    nav({ to: "/login" });
+  };
 
   // إغلاق عند الضغط خارج السايدبار (موبايل)
   useClickOutside(drawerRef, () => {
@@ -184,21 +194,28 @@ export function AppSidebar() {
           )}
         </div>
 
-        {/* معلومات المستخدم */}
-        <div className="px-4 py-3 border-b border-border shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0 text-primary font-bold text-sm select-none">
-              {(user?.profile?.username ?? "?")[0].toUpperCase()}
-            </div>
-            <div className="min-w-0">
-              <p className="text-sm font-medium text-foreground truncate">
+        {/* معلومات المستخدم — قابل للضغط لفتح البروفايل */}
+        <div className="px-3 py-2 border-b border-border shrink-0">
+          <button
+            onClick={() => { nav({ to: "/profile" }); setOpen(false); }}
+            className="w-full flex items-center gap-3 rounded-lg px-2 py-2 text-start hover:bg-accent transition-colors group"
+          >
+            <UserAvatar
+              userId={user?.id}
+              avatarUrl={user?.profile?.avatar_url}
+              name={user?.profile?.full_name ?? user?.profile?.username}
+              size="sm"
+            />
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-medium text-foreground truncate leading-tight">
                 {user?.profile?.full_name ?? user?.profile?.username ?? "—"}
               </p>
               <p className="text-xs text-muted-foreground truncate">
                 @{user?.profile?.username ?? ""}
               </p>
             </div>
-          </div>
+            <Settings2 className="h-3.5 w-3.5 text-muted-foreground/50 group-hover:text-muted-foreground shrink-0 transition-colors" />
+          </button>
         </div>
 
         {/* قائمة التنقل */}
@@ -236,13 +253,21 @@ export function AppSidebar() {
           })}
         </nav>
 
-        {/* Footer */}
-        <div className="px-4 py-3 border-t border-border shrink-0">
-          <p className="text-[11px] text-muted-foreground/60 text-center">
+        {/* Footer: تسجيل خروج + copyright */}
+        <div className="px-3 py-2 border-t border-border shrink-0 space-y-1">
+          <button
+            onClick={handleLogout}
+            className="w-full flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
+          >
+            <LogOut className="h-4 w-4 shrink-0" />
+            {t("logout")}
+          </button>
+          <p className="text-[10px] text-muted-foreground/40 text-center pb-1">
             {t("app_name")} © {new Date().getFullYear()}
           </p>
         </div>
       </aside>
+
 
       {/* spacer للـ desktop حتى لا يتغطى المحتوى بالسايدبار */}
       {!isMobile && (
